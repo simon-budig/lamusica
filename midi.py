@@ -9,18 +9,15 @@ tracks = range (1024)
 
 delta_ticks = 0
 
-wholenotes = [  0,  2,  4,  5,  7,  9, 11,
-               12, 14, 16, 17, 19, 21, 23,
-               24, 26, 28, 29, 31, 33 ]
-
 models = {
    "sanyo20" : {
-      "notes" : [ #  C,  D,  E,  F,  G,  A,  B,
-                     0,  2,  4,  5,  7,  9, 11,
-                  # C1, D1, E1, F1, G1, A1, B1,
-                    12, 14, 16, 17, 19, 21, 23,
-                  # C2, D2, E2, F2, G2, A2,
-                    24, 26, 28, 29, 31, 33 ],
+      "lowest"   : 48,
+      "notes"    : [ #  C,  D,  E,  F,  G,  A,  B,
+                        0,  2,  4,  5,  7,  9, 11,
+                     # C1, D1, E1, F1, G1, A1, B1,
+                       12, 14, 16, 17, 19, 21, 23,
+                     # C2, D2, E2, F2, G2, A2,
+                       24, 26, 28, 29, 31, 33 ],
       "height"   : 70.0,
       "offset"   :  6.5,
       "distance" :  3.0,
@@ -29,32 +26,34 @@ models = {
    },
    # http://www.njdean.co.uk/musical-movements-mbm30hp.htm
    "teanola30" : {
-      "notes" : [ #  C,       D,                    G,       A,       B,
-                     0,       2,                    7,       9,      11,
-                  # C1,      D1,      E1, F1, F#1, G1, G#1, A1, A#1, B1,
-                    12,      14,      16, 17,  18, 19,  20, 21,  22, 23,
-                  # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2, A#2, B2,
-                    24,  25, 26,  27, 28, 29,  30, 31,  32, 33,  34, 35,
-                  # C3,      D3,      E3,
-                    36,      38,      40 ],
+      "lowest"   : 48,
+      "notes"    : [ #  C,       D,                    G,       A,       B,
+                        0,       2,                    7,       9,      11,
+                     # C1,      D1,      E1, F1, F#1, G1, G#1, A1, A#1, B1,
+                       12,      14,      16, 17,  18, 19,  20, 21,  22, 23,
+                     # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2, A#2, B2,
+                       24,  25, 26,  27, 28, 29,  30, 31,  32, 33,  34, 35,
+                     # C3,      D3,      E3,
+                       36,      38,      40 ],
       "height"   : 70.0, # (?)
-      "offset"   :  6.5, # (?)
-      "distance" :  3.0, # (?)
-      "diameter" :  2.4, # (?)
+      "offset"   :  5.0, # (?)
+      "distance" :  2.0, # (?)
+      "diameter" :  1.5, # (?)
       "step"     :  9.0, # (?)
    },
    # http://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5663
    "sanyo33" : {
-      "notes" : [ #  C,       D,  D#,  E,  F,  F#,  G,  F#,  A,  A#,  B,
-                     0,       2,   3,  4,  5,   6,  7,   8,  9,  10, 11,
-                  # C1, C#1  D1, D#1, E1, F1, F#1, G1, G#1, A1, A#1, B1,
-                    12,  13, 14,  15, 16, 17,  18, 19,  20, 21,  22, 23,
-                  # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2, A#2,
-                    24,  25, 26,  27, 28, 29,  30, 31,  32, 33,  34 ],
+      "lowest"   : 48,
+      "notes"    : [ #  C,       D,  D#,  E,  F,  F#,  G,  F#,  A,  A#,  B,
+                        0,       2,   3,  4,  5,   6,  7,   8,  9,  10, 11,
+                     # C1, C#1  D1, D#1, E1, F1, F#1, G1, G#1, A1, A#1, B1,
+                       12,  13, 14,  15, 16, 17,  18, 19,  20, 21,  22, 23,
+                     # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2, A#2,
+                       24,  25, 26,  27, 28, 29,  30, 31,  32, 33,  34 ],
       "height"   : 70.0, # (?)
-      "offset"   :  6.5, # (?)
-      "distance" :  3.0, # (?)
-      "diameter" :  2.4, # (?)
+      "offset"   :  2.0, # (?)
+      "distance" :  2.0, # (?)
+      "diameter" :  1.5, # (?)
       "step"     :  9.0, # (?)
    }
 }
@@ -152,54 +151,45 @@ def read_midi (filename):
 
 
 
-def prepare_band (band):
+def prepare_band (model, band, allow_trans):
    print >>sys.stderr, "notes used:",
+   lowest = 127
+   highest = 0
    for i in range (128):
       if band[i]:
+         lowest = min (lowest, i)
+         highest = max (lowest, i)
          print >>sys.stderr, "%d (%d)," % (i, len (band[i])),
+   print >>sys.stderr, "range: %d - %d\n" % (lowest, highest)
    print >>sys.stderr
+
+   # fix up notes to correspond to midi notes
+   notes = [ n + model["lowest"] for n in model["notes"] ]
 
    transpose = 0
    transpose_error = sys.maxint
 
-   for trans in range(12):
-      errcount = 0;
+   for trans in range (min (notes) - highest - 1,
+                       max (notes) - lowest + 2):
+      if trans % 12 != 0 and not allow_trans:
+         continue
+
+      errcount = 0
       for i in range (128):
-         if band[i] and (i+trans) % 12 in [ 1, 3, 6, 8, 10 ]:
+         if band[i] and (i+trans) not in notes:
             errcount += len (band[i])
       if errcount < transpose_error:
          transpose_error = errcount
          transpose = trans
+      
+   print >>sys.stderr, "transposing by %d octaves and %d halftones" % (transpose / 12, transpose % 12)
+   print >>sys.stderr, "    --> %d notes not playable" % (transpose_error)
 
-   octshift = 0
-   octshift_error = sys.maxint
-
-   for os in range (-12, 12):
-      errcount = 0
-      for i in range (128):
-         if (i + transpose + os*12 < 0) or (i + transpose + os*12 > 33):
-            errcount += len (band[i])
-      if errcount < octshift_error:
-         octshift_error = errcount
-         octshift = os
-
-   print >>sys.stderr, "transposing by %d octaves and %d halftones" % (octshift, transpose)
-   print >>sys.stderr, "    --> %d halftone errors, %d notes out of range" % (transpose_error, octshift_error)
-
-   notelist = [[] for i in range (20)]
+   notelist = [[] for i in range (len(notes))]
    deltas = {}
-   for i in range (20):
-      if i < 8:
-         for j in range (wholenotes[i] - octshift * 12 - transpose, -1, -12):
-            notelist[i] += band[j].keys()
-      elif i < 12:
-         for j in range (wholenotes[i] - octshift * 12 - transpose, -1, -12):
-            notelist[i] += band[j].keys()
-         for j in range (wholenotes[i] - octshift * 12 - transpose + 12, 128, 12):
-            notelist[i] += band[j].keys()
-      else:
-         for j in range (wholenotes[i] - octshift * 12 - transpose, 128, 12):
-            notelist[i] += band[j].keys()
+
+   for i in range (len(notes)):
+      notelist[i] += band [notes[i] - transpose].keys ()
       notelist[i] = list (set (notelist[i]))
       notelist[i].sort()
       for j in range (len (notelist[i]) - 1):
@@ -234,12 +224,12 @@ def output_svg (model, notelist, mindelta):
   <g transform="scale(3.5433,-3.5433) translate(0,-%g)">
     <path style="fill:black; stroke:none;"
           d="M 4 5 L 7 7 7 5.7 17 5.7 17 4.3 7 4.3 7 3 z" />
-    <rect style="fill:none; stroke:blue; stroke-width:0.1;"
+    <rect style="fill:none; stroke:blue; stroke-width:0.2;"
           x="0" y="0" width="%g" height="%g" rx="3" ry="3" />
-    <g style="fill:none; stroke:red; stroke-width:0.03333;"
+    <g style="fill:none; stroke:red; stroke-width:0.2;"
        transform="translate(%g,%g)">""" % (length, height, height, length, height, leadin, offset)
    note = 0
-   for note in range(20):
+   for note in range(len(notelist)):
       for n in notelist[note]:
          print "      <circle cx=\"%g\" cy=\"%g\" r=\"%g\"/>" % ((n - start) * step, note * dist, radius)
 
@@ -247,18 +237,23 @@ def output_svg (model, notelist, mindelta):
 
 
 
-def output_midi (notelist, mindelta):
+def output_midi (model, notelist, mindelta):
    sys.stdout.write ("MThd" + struct.pack (">ihhh", 6, 0, 1, delta_ticks))
 
+   # fix up notes to correspond to midi notes
+   notes = [ n + model["lowest"] for n in model["notes"] ]
+
    events = []
-   for i in range (20):
-      events += [(t, i) for t in notelist[i]]
+   for i in range (len (notelist)):
+      events += [(t, notes[i], 1) for t in notelist[i]]
+      # add events to shut off the notes
+      events += [(t+512, notes[i], 0) for t in notelist[i]]
 
    events.sort()
 
    last_time = 0
    eventdata = ""
-   for t, i in events:
+   for t, i, on in events:
       dt = t - last_time
       if (dt >> 21):
          eventdata += chr (0x80 | ((dt >> 21) & 0x7f))
@@ -268,7 +263,10 @@ def output_midi (notelist, mindelta):
          eventdata += chr (0x80 | ((dt >> 7) & 0x7f))
 
       eventdata += chr (0x00 | ((dt >> 0) & 0x7f))
-      eventdata += chr (0x90) + chr (60 + wholenotes[i]) + chr (127)
+      if on:
+         eventdata += chr (0x90) + chr (i) + chr (127)
+      else:
+         eventdata += chr (0x80) + chr (i) + chr (127)
       last_time += dt
 
    eventdata += "\x00\xFF\x2F\x00"
@@ -286,6 +284,6 @@ if __name__=='__main__':
 
    model = models["sanyo33"]
 
-   notelist, mindelta = prepare_band (band)
- # output_midi (notelist, mindelta)
-   output_svg (model, notelist, mindelta)
+   notelist, mindelta = prepare_band (model, band, False)
+   output_midi (model, notelist, mindelta)
+ # output_svg (model, notelist, mindelta)
