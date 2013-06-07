@@ -187,7 +187,7 @@ def prepare_band (band):
    print >>sys.stderr, "    --> %d halftone errors, %d notes out of range" % (transpose_error, octshift_error)
 
    notelist = [[] for i in range (20)]
-   mindelta = sys.maxint
+   deltas = {}
    for i in range (20):
       if i < 8:
          for j in range (wholenotes[i] - octshift * 12 - transpose, -1, -12):
@@ -203,9 +203,16 @@ def prepare_band (band):
       notelist[i] = list (set (notelist[i]))
       notelist[i].sort()
       for j in range (len (notelist[i]) - 1):
-         mindelta = min (mindelta, notelist[i][j+1] - notelist[i][j])
+         delta = notelist[i][j+1] - notelist[i][j]
+         deltas[delta] = deltas.get (delta, 0) + 1
 
-   return notelist, mindelta
+   ks = deltas.keys()
+   ks.sort()
+
+   for i in range (15):
+      print >>sys.stderr, "delta: %d, (%d times)" % (ks[i], deltas[ks[i]])
+
+   return notelist, ks[0]
 
 
 
@@ -227,14 +234,10 @@ def output_svg (model, notelist, mindelta):
   <g transform="scale(3.5433,-3.5433) translate(0,-%g)">
     <path style="fill:black; stroke:none;"
           d="M 4 5 L 7 7 7 5.7 17 5.7 17 4.3 7 4.3 7 3 z" />
-    <path style="fill:none; stroke:blue; stroke-width:0.1;"
-          d="M 3 0
-             a 3 3 0 0 0 -3  3 l 0 %g
-             a 3 3 0 0 0  3  3 l %g 0
-             a 3 3 0 0 0  3 -3 l 0 -%g
-             a 3 3 0 0 0 -3 -3 z" />
+    <rect style="fill:none; stroke:blue; stroke-width:0.1;"
+          x="0" y="0" width="%g" height="%g" rx="3" ry="3" />
     <g style="fill:none; stroke:red; stroke-width:0.03333;"
-       transform="translate(%g,%g)">""" % (length, height, height, height - 6, length - 6, height - 6, leadin, offset)
+       transform="translate(%g,%g)">""" % (length, height, height, length, height, leadin, offset)
    note = 0
    for note in range(20):
       for n in notelist[note]:
