@@ -13,6 +13,54 @@ wholenotes = [  0,  2,  4,  5,  7,  9, 11,
                12, 14, 16, 17, 19, 21, 23,
                24, 26, 28, 29, 31, 33 ]
 
+models = {
+   "sanyo20" : {
+      "notes" : [ #  C,  D,  E,  F,  G,  A,  B,
+                     0,  2,  4,  5,  7,  9, 11,
+                  # C1, D1, E1, F1, G1, A1, B1,
+                    12, 14, 16, 17, 19, 21, 23,
+                  # C2, D2, E2, F2, G2, A2,
+                    24, 26, 28, 29, 31, 33 ],
+      "height"   : 70.0,
+      "offset"   :  6.5,
+      "distance" :  3.0,
+      "diameter" :  2.4,
+      "step"     :  9.0,
+   },
+   # http://www.njdean.co.uk/musical-movements-mbm30hp.htm
+   "teanola30" : {
+      "notes" : [ #  C,       D,                    G,       A,       B,
+                     0,       2,                    7,       9,      11,
+                  # C1,      D1,      E1, F1, F#1, G1, G#1, A1, A#1, B1,
+                    12,      14,      16, 17,  18, 19,  20, 21,  22, 23,
+                  # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2, A#2, B2,
+                    24,  25, 26,  27, 28, 29,  30, 31,  32, 33,  34, 35,
+                  # C3,      D3,      E3,
+                    36,      38,      40 ],
+      "height"   : 70.0, # (?)
+      "offset"   :  6.5, # (?)
+      "distance" :  3.0, # (?)
+      "diameter" :  2.4, # (?)
+      "step"     :  9.0, # (?)
+   },
+   # http://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5663
+   "sanyo33" : {
+      "notes" : [ #  C,       D,  D#,  E,  F,  F#,  G,  F#,  A,  A#,  B,
+                     0,       2,   3,  4,  5,   6,  7,   8,  9,  10, 11,
+                  # C1, C#1  D1, D#1, E1, F1, F#1, G1, G#1, A1, A#1, B1,
+                    12,  13, 14,  15, 16, 17,  18, 19,  20, 21,  22, 23,
+                  # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2, A#2,
+                    24,  25, 26,  27, 28, 29,  30, 31,  32, 33,  34 ],
+      "height"   : 70.0, # (?)
+      "offset"   :  6.5, # (?)
+      "distance" :  3.0, # (?)
+      "diameter" :  2.4, # (?)
+      "step"     :  9.0, # (?)
+   }
+}
+
+
+
 def handle_midi_event (dt, command):
    global band, trktime
 
@@ -23,10 +71,11 @@ def handle_midi_event (dt, command):
       pass
       # print >>sys.stderr, dt, ": noteoff"
    elif mc == 0x09:
-      print >>sys.stderr, dt, ": noteon", ord (command[1])
+      # print >>sys.stderr, dt, ": noteon", ord (command[1])
       band[ord (command[1])] [trktime] = 1
    else:
       print >>sys.stderr, "dt: %d, event %r" % (dt, command)
+
 
 
 def handle_midi_ticked_events (midi_data):
@@ -66,6 +115,7 @@ def handle_midi_ticked_events (midi_data):
       handle_midi_event (dt, command)
 
 
+
 def handle_chunk (chunkname, chunkdata):
    global cur_track, delta_ticks
 
@@ -78,7 +128,10 @@ def handle_chunk (chunkname, chunkdata):
    elif chunkname == 'MTrk':
       if cur_track in tracks:
          handle_midi_ticked_events (chunkdata)
+      else:
+         print >>sys.stderr, "ignoring track %d\n"
       cur_track += 1
+
 
 
 def read_midi (filename):
@@ -96,6 +149,7 @@ def read_midi (filename):
       print >>sys.stderr, chunkname, chunklen
       handle_chunk (chunkname, chunkdata)
       t = t[8+chunklen:]
+
 
 
 def prepare_band (band):
@@ -155,31 +209,40 @@ def prepare_band (band):
 
 
 
-def output_svg (notelist, mindelta):
-   step = 3.0 / mindelta
+def output_svg (model, notelist, mindelta):
+   height  = model["height"]
+   offset  = model["offset"]
+   radius  = model["diameter"] / 2
+   dist    = model["distance"]
+   step    = model["step"] / mindelta
+   leadin  = 20.0
+   leadout = 20.0
 
-   start = min ([min (i) for i in notelist if i])
-   l = int ((max ([max (i) for i in notelist if i]) - start) * 3.0 * step + 1) + 40
+   start   = min ([min (i) for i in notelist if i])
+   end     = max ([max (i) for i in notelist if i])
+   length  = int (end - start) * step + 1 + leadin + leadout
 
    print """<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="%dmm" height="70mm">
-  <g transform="scale(3.5433,-3.5433) translate(0,-70)">
+<svg xmlns="http://www.w3.org/2000/svg" width="%gmm" height="%gmm">
+  <g transform="scale(3.5433,-3.5433) translate(0,-%g)">
     <path style="fill:black; stroke:none;"
           d="M 4 5 L 7 7 7 5.7 17 5.7 17 4.3 7 4.3 7 3 z" />
     <path style="fill:none; stroke:blue; stroke-width:0.1;"
           d="M 3 0
-             a 3 3 0 0 0 -3  3 l 0 64
-             a 3 3 0 0 0  3  3 l %d 0
-             a 3 3 0 0 0  3 -3 l 0 -64
+             a 3 3 0 0 0 -3  3 l 0 %g
+             a 3 3 0 0 0  3  3 l %g 0
+             a 3 3 0 0 0  3 -3 l 0 -%g
              a 3 3 0 0 0 -3 -3 z" />
     <g style="fill:none; stroke:red; stroke-width:0.03333;"
-       transform="translate(20,6.5) scale(3,3)">""" % (l, l - 6)
+       transform="translate(%g,%g)">""" % (length, height, height, height - 6, length - 6, height - 6, leadin, offset)
    note = 0
    for note in range(20):
       for n in notelist[note]:
-         print "      <circle cx=\"%g\" cy=\"%d\" r=\"0.40\"/>" % ((n - start) * step, note)
+         print "      <circle cx=\"%g\" cy=\"%g\" r=\"%g\"/>" % ((n - start) * step, note * dist, radius)
 
    print "    </g>\n  </g>\n</svg>"
+
+
 
 def output_midi (notelist, mindelta):
    sys.stdout.write ("MThd" + struct.pack (">ihhh", 6, 0, 1, delta_ticks))
@@ -214,10 +277,12 @@ def output_midi (notelist, mindelta):
 if __name__=='__main__':
    band = [ {} for i in range (128) ]
    trktime = 0
-   tracks = [0, 1, 2, 3]
+   tracks = [0, 1, 2, 3, 4]
 
    read_midi (sys.argv[1])
 
+   model = models["sanyo33"]
+
    notelist, mindelta = prepare_band (band)
  # output_midi (notelist, mindelta)
-   output_svg (notelist, mindelta)
+   output_svg (model, notelist, mindelta)
