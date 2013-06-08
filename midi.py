@@ -10,7 +10,7 @@ tracks = range (1024)
 delta_ticks = 0
 
 models = {
-   "sanyo20" : {
+   "sankyo20" : {
       "lowest"   : 48,
       "notes"    : [ #  C,  D,  E,  F,  G,  A,  B,
                         0,  2,  4,  5,  7,  9, 11,
@@ -22,7 +22,7 @@ models = {
       "offset"   :  6.5,
       "distance" :  3.0,
       "diameter" :  2.4,
-      "step"     :  9.0,
+      "step"     :  7.0,
    },
    # http://www.njdean.co.uk/musical-movements-mbm30hp.htm
    "teanola30" : {
@@ -39,10 +39,10 @@ models = {
       "offset"   :  5.0, # (?)
       "distance" :  2.0, # (?)
       "diameter" :  1.5, # (?)
-      "step"     :  9.0, # (?)
+      "step"     :  7.0, # (?)
    },
    # http://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5663
-   "sanyo33" : {
+   "sankyo33" : {
       "lowest"   : 48,
       "notes"    : [ #  C,       D,  D#,  E,  F,  F#,  G,  F#,  A,  A#,  B,
                         0,       2,   3,  4,  5,   6,  7,   8,  9,  10, 11,
@@ -54,7 +54,7 @@ models = {
       "offset"   :  2.0, # (?)
       "distance" :  2.0, # (?)
       "diameter" :  1.5, # (?)
-      "step"     :  9.0, # (?)
+      "step"     :  7.0, # (?)
    }
 }
 
@@ -214,7 +214,33 @@ def prepare_band (model, band, allow_trans):
    ks = deltas.keys()
    ks.sort()
 
-   for i in range (15):
+   for i in range (10):
+      print >>sys.stderr, "delta: %d, (%d times)" % (ks[i], deltas[ks[i]])
+
+   return notelist, ks[0]
+
+
+
+def filter_band (model, notelist, filter):
+   deltas = {}
+
+   for i in range (len (notelist)):
+      last_time = - 2 * filter
+      newnotes = []
+      for note in notelist[i]:
+         if note - last_time >= filter:
+            newnotes.append (note)
+            last_time = note
+      notelist[i] = newnotes
+            
+      for j in range (len (notelist[i]) - 1):
+         delta = notelist[i][j+1] - notelist[i][j]
+         deltas[delta] = deltas.get (delta, 0) + 1
+
+   ks = deltas.keys()
+   ks.sort()
+
+   for i in range (10):
       print >>sys.stderr, "delta: %d, (%d times)" % (ks[i], deltas[ks[i]])
 
    return notelist, ks[0]
@@ -301,8 +327,8 @@ def usage ():
 if __name__=='__main__':
    try:
       opts, args = getopt.getopt (sys.argv[1:],
-                                  "hnb:m:s:",
-                                  ["help", "no-transpose", "box=", "midi=", "svg="])
+                                  "hnf:b:m:s:",
+                                  ["help", "no-transpose", "filter=", "box=", "midi=", "svg="])
    except getopt.GetoptError as err:
       usage()
       sys.exit (2)
@@ -313,7 +339,8 @@ if __name__=='__main__':
 
    midifile = None
    svgfile = None
-   boxtype = "sanyo20"
+   filter = 0
+   boxtype = "sankyo20"
    transpose = True
 
    for o, a in opts:
@@ -322,6 +349,8 @@ if __name__=='__main__':
          sys.exit()
       elif o in ("-n", "--no-transpose"):
          transpose = False
+      elif o in ("-f", "--filter"):
+         filter = int (a)
       elif o in ("-b", "--box"):
          boxtype = a
       elif o in ("-m", "--midi"):
@@ -347,6 +376,9 @@ if __name__=='__main__':
 
    notelist, mindelta = prepare_band (model, band, transpose)
 
+   if filter > 0:
+      notelist, mindelta = filter_band (model, notelist, filter)
+      
    if midifile:
       output_midi (model, midifile, notelist, mindelta)
    
