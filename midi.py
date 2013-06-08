@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import struct, sys
+import struct, sys, getopt
 
 band = None
 trktime = 0
@@ -189,7 +189,22 @@ def prepare_band (model, band, allow_trans):
    deltas = {}
 
    for i in range (len(notes)):
-      notelist[i] += band [notes[i] - transpose].keys ()
+      cur_note = notes[i] - transpose
+      while cur_note >= 0:
+         notelist[i] += band [cur_note].keys ()
+         print >>sys.stderr, "adding to %d: %d (%d)" % (i, cur_note, len (band [cur_note].keys ()))
+         cur_note -= 12
+         if cur_note + transpose in notes:
+            break
+
+      cur_note = notes[i] + transpose + 12
+      while cur_note < 128:
+         if cur_note + transpose in notes:
+            break
+         notelist[i] += band [cur_note].keys ()
+         print >>sys.stderr, "adding to %d: %d (%d)" % (i, cur_note, len (band [cur_note].keys ()))
+         cur_note += 12
+
       notelist[i] = list (set (notelist[i]))
       notelist[i].sort()
       for j in range (len (notelist[i]) - 1):
@@ -206,7 +221,7 @@ def prepare_band (model, band, allow_trans):
 
 
 
-def output_svg (model, notelist, mindelta):
+def output_svg (model, filename, notelist, mindelta):
    height  = model["height"]
    offset  = model["offset"]
    radius  = model["diameter"] / 2
@@ -219,7 +234,8 @@ def output_svg (model, notelist, mindelta):
    end     = max ([max (i) for i in notelist if i])
    length  = int (end - start) * step + 1 + leadin + leadout
 
-   print """<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+   outfile = file (filename, "w")
+   outfile.write ("""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="%gmm" height="%gmm">
   <g transform="scale(3.5433,-3.5433) translate(0,-%g)">
     <path style="fill:black; stroke:none;"
@@ -227,19 +243,17 @@ def output_svg (model, notelist, mindelta):
     <rect style="fill:none; stroke:blue; stroke-width:0.2;"
           x="0" y="0" width="%g" height="%g" rx="3" ry="3" />
     <g style="fill:none; stroke:red; stroke-width:0.2;"
-       transform="translate(%g,%g)">""" % (length, height, height, length, height, leadin, offset)
+       transform="translate(%g,%g)">\n""" % (length, height, height, length, height, leadin, offset))
    note = 0
    for note in range(len(notelist)):
       for n in notelist[note]:
-         print "      <circle cx=\"%g\" cy=\"%g\" r=\"%g\"/>" % ((n - start) * step, note * dist, radius)
+         outfile.write ("      <circle cx=\"%g\" cy=\"%g\" r=\"%g\"/>\n" % ((n - start) * step, note * dist, radius))
 
-   print "    </g>\n  </g>\n</svg>"
+   outfile.write ("    </g>\n  </g>\n</svg>\n")
 
 
 
-def output_midi (model, notelist, mindelta):
-   sys.stdout.write ("MThd" + struct.pack (">ihhh", 6, 0, 1, delta_ticks))
-
+def output_midi (model, filename, notelist, mindelta):
    # fix up notes to correspond to midi notes
    notes = [ n + model["lowest"] for n in model["notes"] ]
 
@@ -247,7 +261,7 @@ def output_midi (model, notelist, mindelta):
    for i in range (len (notelist)):
       events += [(t, notes[i], 1) for t in notelist[i]]
       # add events to shut off the notes
-      events += [(t+512, notes[i], 0) for t in notelist[i]]
+      events += [(t+255, notes[i], 0) for t in notelist[i]]
 
    events.sort()
 
@@ -270,20 +284,71 @@ def output_midi (model, notelist, mindelta):
       last_time += dt
 
    eventdata += "\x00\xFF\x2F\x00"
-   sys.stdout.write ("MTrk" + struct.pack (">i", len (eventdata)))
-   sys.stdout.write (eventdata)
+
+   outfile = file (filename, "w")
+   outfile.write ("MThd" + struct.pack (">ihhh", 6, 0, 1, delta_ticks))
+   outfile.write ("MTrk" + struct.pack (">i", len (eventdata)))
+   outfile.write (eventdata)
+   outfile.close ()
+
+
+
+def usage ():
+   print >>sys.stderr, "isf"
 
 
 
 if __name__=='__main__':
+   try:
+      opts, args = getopt.getopt (sys.argv[1:],
+                                  "hnb:m:s:",
+                                  ["help", "no-transpose", "box=", "midi=", "svg="])
+   except getopt.GetoptError as err:
+      usage()
+      sys.exit (2)
+
+   if len (args) != 1:
+      usage()
+      sys.exit (2)
+
+   midifile = None
+   svgfile = None
+   boxtype = "sanyo20"
+   transpose = True
+
+   for o, a in opts:
+      if o in ("-h", "--help"):
+         usage()
+         sys.exit()
+      elif o in ("-n", "--no-transpose"):
+         transpose = False
+      elif o in ("-b", "--box"):
+         boxtype = a
+      elif o in ("-m", "--midi"):
+         midifile = a
+      elif o in ("-s", "--svg"):
+         svgfile = a
+      else:
+         assert False, "unhandled option"
+
+   model = models.get (boxtype, None)
+   if not model:
+      print >>sys.stderr, "Boxtype unknown. Available boxtypes are:"
+      ms = models.keys ()
+      ms.sort ()
+      print >>sys.stderr, "  * %s" % "\n  * ".join (ms)
+      sys.exit (2)
+
    band = [ {} for i in range (128) ]
    trktime = 0
    tracks = [0, 1, 2, 3, 4]
 
-   read_midi (sys.argv[1])
+   read_midi (args[0])
 
-   model = models["sanyo33"]
+   notelist, mindelta = prepare_band (model, band, transpose)
 
-   notelist, mindelta = prepare_band (model, band, False)
-   output_midi (model, notelist, mindelta)
- # output_svg (model, notelist, mindelta)
+   if midifile:
+      output_midi (model, midifile, notelist, mindelta)
+   
+   if svgfile:
+      output_svg (model, svgfile, notelist, mindelta)
