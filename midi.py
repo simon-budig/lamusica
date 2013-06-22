@@ -10,6 +10,20 @@ tracks = range (1024)
 delta_ticks = 0
 
 models = {
+   "sankyo15" : {
+      "lowest"   : 60,
+      "notes"    : [ #  C,  D,  E,  F,  G,  A,  B,
+                        0,  2,  4,  5,  7,  9, 11,
+                     # C1, D1, E1, F1, G1, A1, B1,
+                       12, 14, 16, 17, 19, 21, 23,
+                     # C2,
+                       24 ],
+      "height"   : 70.0,
+      "offset"   : 14.0,
+      "distance" :  3.0,
+      "diameter" :  2.4,
+      "step"     :  7.0,
+   },
    "sankyo20" : {
       "lowest"   : 48,
       "notes"    : [ #  C,  D,  E,  F,  G,  A,  B,
@@ -25,6 +39,7 @@ models = {
       "step"     :  7.0,
    },
    # http://www.njdean.co.uk/musical-movements-mbm30hp.htm
+   # http://www.mmdigest.com/Gallery/Sounds/mg_Teamola30n.html
    "teanola30" : {
       "lowest"   : 48,
       "notes"    : [ #  C,       D,                    G,       A,       B,
@@ -36,9 +51,9 @@ models = {
                      # C3,      D3,      E3,
                        36,      38,      40 ],
       "height"   : 70.0, # (?)
-      "offset"   :  5.0, # (?)
+      "offset"   :  6.0, # (?)
       "distance" :  2.0, # (?)
-      "diameter" :  1.5, # (?)
+      "diameter" :  1.8, # (?)
       "step"     :  7.0, # (?)
    },
    # http://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5663
@@ -48,13 +63,13 @@ models = {
                         0,       2,   3,  4,  5,   6,  7,   8,  9,  10, 11,
                      # C1, C#1  D1, D#1, E1, F1, F#1, G1, G#1, A1, A#1, B1,
                        12,  13, 14,  15, 16, 17,  18, 19,  20, 21,  22, 23,
-                     # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2, A#2,
-                       24,  25, 26,  27, 28, 29,  30, 31,  32, 33,  34 ],
+                     # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2,
+                       24,  25, 26,  27, 28, 29,  30, 31,  32, 33 ],
       "height"   : 70.0, # (?)
-      "offset"   :  2.0, # (?)
-      "distance" :  2.0, # (?)
-      "diameter" :  1.5, # (?)
-      "step"     :  7.0, # (?)
+      "offset"   :  5.3, # (?)
+      "distance" :  1.8, # (?)
+      "diameter" :  1.7, # (?)
+      "step"     :  8.0, # (?)
    }
 }
 
@@ -190,19 +205,18 @@ def prepare_band (model, band, allow_trans):
 
    for i in range (len(notes)):
       cur_note = notes[i] - transpose
-      while cur_note >= 0:
-         notelist[i] += band [cur_note].keys ()
-         print >>sys.stderr, "adding to %d: %d (%d)" % (i, cur_note, len (band [cur_note].keys ()))
-         cur_note -= 12
-         if cur_note + transpose in notes:
-            break
+      notelist[i] += band [cur_note].keys ()
 
-      cur_note = notes[i] + transpose + 12
-      while cur_note < 128:
-         if cur_note + transpose in notes:
-            break
+      cur_note = notes[i] - transpose - 12
+      while cur_note >= 0 and cur_note + transpose not in notes:
          notelist[i] += band [cur_note].keys ()
-         print >>sys.stderr, "adding to %d: %d (%d)" % (i, cur_note, len (band [cur_note].keys ()))
+      #  print >>sys.stderr, "adding to %d: %d (%d)" % (i, cur_note, len (band [cur_note].keys ()))
+         cur_note -= 12
+
+      cur_note = notes[i] - transpose + 12
+      while cur_note < 128 and cur_note + transpose not in notes:
+         notelist[i] += band [cur_note].keys ()
+      #  print >>sys.stderr, "adding to %d: %d (%d)" % (i, cur_note, len (band [cur_note].keys ()))
          cur_note += 12
 
       notelist[i] = list (set (notelist[i]))
@@ -248,6 +262,9 @@ def filter_band (model, notelist, filter):
 
 
 def output_svg (model, filename, notelist, mindelta):
+   pwidth  = 297.0
+   pheight = 210.0
+   pborder = 10
    height  = model["height"]
    offset  = model["offset"]
    radius  = model["diameter"] / 2
@@ -256,26 +273,58 @@ def output_svg (model, filename, notelist, mindelta):
    leadin  = 20.0
    leadout = 20.0
 
-   start   = min ([min (i) for i in notelist if i])
-   end     = max ([max (i) for i in notelist if i])
-   length  = int (end - start) * step + 1 + leadin + leadout
+   alltimes = list (set (sum (notelist, [])))
+   alltimes.sort ()
+   start   = alltimes[0]
+   end     = alltimes[-1]
+   length  = int (end - start) * step + radius * 2 + leadin + leadout
+
+   splits = [0.0]
+   startpos = splits[0]
+   breakpos = splits[0]
+
+   for i in range (1, len(alltimes)):
+      middlepos = leadin + (alltimes[i] + alltimes[i-1]) * step / 2
+      if middlepos - startpos > pwidth - 2 * pborder:
+         splits.append (breakpos)
+         startpos = breakpos
+
+      if (alltimes[i] - alltimes[i-1]) * step > radius * 4:
+         breakpos = middlepos
+         
+   splits.append (length)
+   print splits
+
+   holes = [(leadin + (n - start) * step, i * dist + offset) for i in range (len (notelist)) for n in notelist[i]]
+   holes.sort ()
 
    outfile = file (filename, "w")
    outfile.write ("""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="%gmm" height="%gmm">
   <g transform="scale(3.5433,-3.5433) translate(0,-%g)">
     <path style="fill:black; stroke:none;"
-          d="M 4 5 L 7 7 7 5.7 17 5.7 17 4.3 7 4.3 7 3 z" />
-    <rect style="fill:none; stroke:blue; stroke-width:0.2;"
-          x="0" y="0" width="%g" height="%g" rx="3" ry="3" />
-    <g style="fill:none; stroke:red; stroke-width:0.2;"
-       transform="translate(%g,%g)">\n""" % (length, height, height, length, height, leadin, offset))
-   note = 0
-   for note in range(len(notelist)):
-      for n in notelist[note]:
-         outfile.write ("      <circle cx=\"%g\" cy=\"%g\" r=\"%g\"/>\n" % ((n - start) * step, note * dist, radius))
+          d="M 4 5 L 7 7 7 5.7 17 5.7 17 4.3 7 4.3 7 3 z" />\n""" % (pwidth, len(splits) * (height + pborder) - height, len(splits) * (height + pborder) - height))
 
-   outfile.write ("    </g>\n  </g>\n</svg>\n")
+   y0 = pborder
+   y1 = y0 + height
+
+   x0 = splits.pop (0)
+   while splits:
+      x1 = splits.pop (0)
+      outfile.write (("""    <g style="fill:black; stroke:none;">\n""" +
+                      """      <rect style="fill:none; stroke:blue; stroke-width:0.2;"\n"""
+                      """            x="%g" y="%g" width="%g" height="%g" />\n""") % (pborder, y0, x1 - x0, y1 - y0))
+
+      while holes and holes[0][0] < x1:
+         x, y = holes.pop (0)
+         outfile.write ("""      <circle cx="%g" cy="%g" r="%g"/>\n""" % (x - x0 + pborder, y + y0, radius))
+
+      outfile.write ("    </g>\n");
+      x0 = x1
+      y0 = y1 + pborder
+      y1 = y0 + height
+
+   outfile.write ("  </g>\n</svg>\n")
 
 
 
