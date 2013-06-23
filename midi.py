@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import struct, sys, getopt
+import sys, struct, math, getopt
+import cairo
 
 band = None
 trktime = 0
@@ -261,9 +262,9 @@ def filter_band (model, notelist, filter):
 
 
 
-def output_svg (model, filename, notelist, mindelta):
-   pwidth  = 297.0
-   pheight = 210.0
+def output_file (model, filename, is_pdf, notelist, mindelta):
+   pwidth  = 420.0
+   pheight = 297.0
    pborder = 10
    height  = model["height"]
    offset  = model["offset"]
@@ -298,12 +299,32 @@ def output_svg (model, filename, notelist, mindelta):
    holes = [(leadin + (n - start) * step, i * dist + offset) for i in range (len (notelist)) for n in notelist[i]]
    holes.sort ()
 
-   outfile = file (filename, "w")
-   outfile.write ("""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="%gmm" height="%gmm">
-  <g transform="scale(3.5433,-3.5433) translate(0,-%g)">
-    <path style="fill:black; stroke:none;"
-          d="M 4 5 L 7 7 7 5.7 17 5.7 17 4.3 7 4.3 7 3 z" />\n""" % (pwidth, len(splits) * (height + pborder) - height, len(splits) * (height + pborder) - height))
+   if is_pdf:
+      surface = cairo.PDFSurface (filename,
+                                  pwidth / 25.4 * 72,
+                                  pheight / 25.4 * 72)
+   else:
+      # cairo svg cannot deal with multiple pages
+      pheight = len (splits) * (height + pborder) - height + 1
+      surface = cairo.SVGSurface (filename,
+                                  pwidth / 25.4 * 72,
+                                  pheight / 25.4 * 72)
+
+   cr = cairo.Context (surface)
+
+   cr.scale (2.83464, -2.83464)
+   cr.translate (0.0, -pheight)
+   cr.set_line_width (0.2)
+
+   cr.move_to (4, 5)
+   cr.line_to (7, 7)
+   cr.line_to (7, 5.7)
+   cr.line_to (17, 5.7)
+   cr.line_to (17, 4.3)
+   cr.line_to (7, 4.3)
+   cr.line_to (7, 3)
+   cr.close_path ()
+   cr.fill ()
 
    y0 = pborder
    y1 = y0 + height
@@ -311,20 +332,37 @@ def output_svg (model, filename, notelist, mindelta):
    x0 = splits.pop (0)
    while splits:
       x1 = splits.pop (0)
-      outfile.write (("""    <g style="fill:black; stroke:none;">\n""" +
-                      """      <rect style="fill:none; stroke:blue; stroke-width:0.2;"\n"""
-                      """            x="%g" y="%g" width="%g" height="%g" />\n""") % (pborder, y0, x1 - x0, y1 - y0))
+      cr.set_source_rgb (0, 0, 1)
+      cr.rectangle (pborder, y0, x1 - x0, y1 - y0)
+      cr.stroke ()
+
+      cr.set_source_rgb (0.7, 0.7, 0.7)
+      for y in [ y0 + offset + i * dist for i in range (len (model["notes"]))]:
+         cr.move_to (pborder, y)
+         cr.line_to (pborder + x1 - x0, y)
+      cr.stroke ()
 
       while holes and holes[0][0] < x1:
          x, y = holes.pop (0)
-         outfile.write ("""      <circle cx="%g" cy="%g" r="%g"/>\n""" % (x - x0 + pborder, y + y0, radius))
+         cr.new_sub_path ()
+         cr.arc (x - x0 + pborder, y + y0, radius, 0.0*math.pi, 0.5*math.pi)
+         cr.arc (x - x0 + pborder, y + y0, radius, 0.5*math.pi, 1.0*math.pi)
+         cr.arc (x - x0 + pborder, y + y0, radius, 1.0*math.pi, 1.5*math.pi)
+         cr.arc (x - x0 + pborder, y + y0, radius, 1.5*math.pi, 2.0*math.pi)
+         cr.close_path ()
 
-      outfile.write ("    </g>\n");
+      cr.set_source_rgb (0, 0, 0)
+      cr.fill ()
+
       x0 = x1
       y0 = y1 + pborder
+      if y0 + height + pborder > pheight:
+         y0 = pborder
+         cr.show_page ()
       y1 = y0 + height
 
-   outfile.write ("  </g>\n</svg>\n")
+   del cr
+   del surface
 
 
 
@@ -369,15 +407,24 @@ def output_midi (model, filename, notelist, mindelta):
 
 
 def usage ():
-   print >>sys.stderr, "isf"
+   print >>sys.stderr, "Usage: %s [arguments] <midi-file>" % sys.argv[0]
+   print >>sys.stderr, "  -h, --help: show usage"
+   print >>sys.stderr, "  -n, --no-transpose: avoid transposing notes"
+   print >>sys.stderr, "  -f, --filter=number: ignore note-repetition faster than <ticks>"
+   print >>sys.stderr, "  -b, --box=type: music box type: sankyo15, sankyo20, teanola30, sankyo33"
+   print >>sys.stderr, "  -m, --midi=filename: output midi file name (omit if not wanted)"
+   print >>sys.stderr, "  -p, --pdf=filename: output pdf file name (omit if not wanted)"
+   print >>sys.stderr, "  -s, --svg=filename: output svg file name (omit if not wanted)"
 
 
 
 if __name__=='__main__':
    try:
       opts, args = getopt.getopt (sys.argv[1:],
-                                  "hnf:b:m:s:",
-                                  ["help", "no-transpose", "filter=", "box=", "midi=", "svg="])
+                                  "hnf:b:m:s:p:",
+                                  ["help", "no-transpose",
+                                  "filter=", "box=",
+                                  "midi=", "svg=", "pdf="])
    except getopt.GetoptError as err:
       usage()
       sys.exit (2)
@@ -388,6 +435,7 @@ if __name__=='__main__':
 
    midifile = None
    svgfile = None
+   pdffile = None
    filter = 0
    boxtype = "sankyo20"
    transpose = True
@@ -406,6 +454,8 @@ if __name__=='__main__':
          midifile = a
       elif o in ("-s", "--svg"):
          svgfile = a
+      elif o in ("-p", "--pdf"):
+         pdffile = a
       else:
          assert False, "unhandled option"
 
@@ -431,5 +481,7 @@ if __name__=='__main__':
    if midifile:
       output_midi (model, midifile, notelist, mindelta)
    
+   if pdffile:
+      output_file (model, pdffile, True, notelist, mindelta)
    if svgfile:
-      output_svg (model, svgfile, notelist, mindelta)
+      output_file (model, svgfile, False, notelist, mindelta)
