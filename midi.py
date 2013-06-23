@@ -167,7 +167,7 @@ def read_midi (filename):
 
 
 
-def prepare_band (model, band, allow_trans):
+def prepare_band (model, band, fix_trans):
    print >>sys.stderr, "notes used:",
    lowest = 127
    highest = 0
@@ -187,7 +187,7 @@ def prepare_band (model, band, allow_trans):
 
    for trans in range (min (notes) - highest - 1,
                        max (notes) - lowest + 2):
-      if trans % 12 != 0 and not allow_trans:
+      if fix_trans != None and trans % 12 != fix_trans % 12:
          continue
 
       errcount = 0
@@ -409,7 +409,7 @@ def output_midi (model, filename, notelist, mindelta):
 def usage ():
    print >>sys.stderr, "Usage: %s [arguments] <midi-file>" % sys.argv[0]
    print >>sys.stderr, "  -h, --help: show usage"
-   print >>sys.stderr, "  -n, --no-transpose: avoid transposing notes"
+   print >>sys.stderr, "  -t, --transpose=number: transpose by n halftones (avoid auto)"
    print >>sys.stderr, "  -f, --filter=number: ignore note-repetition faster than <ticks>"
    print >>sys.stderr, "  -b, --box=type: music box type: sankyo15, sankyo20, teanola30, sankyo33"
    print >>sys.stderr, "  -m, --midi=filename: output midi file name (omit if not wanted)"
@@ -421,8 +421,8 @@ def usage ():
 if __name__=='__main__':
    try:
       opts, args = getopt.getopt (sys.argv[1:],
-                                  "hnf:b:m:s:p:",
-                                  ["help", "no-transpose",
+                                  "ht:f:b:m:s:p:",
+                                  ["help", "transpose=",
                                   "filter=", "box=",
                                   "midi=", "svg=", "pdf="])
    except getopt.GetoptError as err:
@@ -438,14 +438,14 @@ if __name__=='__main__':
    pdffile = None
    filter = 0
    boxtype = "sankyo20"
-   transpose = True
+   transpose = None
 
    for o, a in opts:
       if o in ("-h", "--help"):
          usage()
          sys.exit()
-      elif o in ("-n", "--no-transpose"):
-         transpose = False
+      elif o in ("-t", "--transpose"):
+         transpose = int (a)
       elif o in ("-f", "--filter"):
          filter = int (a)
       elif o in ("-b", "--box"):
