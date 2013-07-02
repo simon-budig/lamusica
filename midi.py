@@ -337,11 +337,22 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
       cr.stroke ()
 
       cr.set_source_rgb (0.7, 0.7, 0.7)
-      for y in [ y0 + offset + i * dist for i in range (len (model["notes"]))]:
+      for i in range (len (model["notes"])):
+         y = y0 + offset + i * dist
          cr.move_to (pborder, y)
          cr.line_to (pborder + x1 - x0, y)
-      cr.stroke ()
+         if model["notes"][i] % 12 in [0, 2, 4, 5, 7, 9, 11]:
+            if model["notes"][i] % 12 == 0:
+               cr.set_line_width (0.4)
+            else:
+               cr.set_line_width (0.2)
+            cr.set_dash ([], 0)
+         else:
+            cr.set_line_width (0.2)
+            cr.set_dash ([.5, 1], 0)
+         cr.stroke ()
 
+      cr.set_dash ([], 0)
       while holes and holes[0][0] < x1:
          x, y = holes.pop (0)
          cr.new_sub_path ()
@@ -351,8 +362,8 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
          cr.arc (x - x0 + pborder, y + y0, radius, 1.5*math.pi, 2.0*math.pi)
          cr.close_path ()
 
-      cr.set_source_rgb (0, 0, 0)
-      cr.fill ()
+      cr.set_source_rgb (1, 0, 0)
+      cr.stroke ()
 
       x0 = x1
       y0 = y1 + pborder
