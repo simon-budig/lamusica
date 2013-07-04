@@ -70,7 +70,7 @@ models = {
       "offset"   :  5.3, # (?)
       "distance" :  1.8, # (?)
       "diameter" :  1.7, # (?)
-      "step"     :  8.0, # (?)
+      "step"     :  9.0, # (?)
    }
 }
 
@@ -124,6 +124,15 @@ def handle_midi_ticked_events (midi_data):
          l = ord (t[1])
          command = mc + t[:2+l]
          t = t[2+l:]
+      elif ord(mc) in [0xf0, 0xf7]:
+         command = mc
+         l = 0
+         while ord (t[0]) & 0x80:
+            command += t[0]
+            l = (l + (ord (t[0]) & 0x7f)) << 7
+            t = t[1:]
+         l += ord (t[0])
+         command += t[:l+1]
       else:
          raise Exception, 'unknown MIDI event: %d' % ord (t[0])
 
@@ -144,7 +153,7 @@ def handle_chunk (chunkname, chunkdata):
       if cur_track in tracks:
          handle_midi_ticked_events (chunkdata)
       else:
-         print >>sys.stderr, "ignoring track %d\n"
+         print >>sys.stderr, "ignoring track %d\n" % cur_track
       cur_track += 1
 
 
@@ -480,7 +489,7 @@ if __name__=='__main__':
 
    band = [ {} for i in range (128) ]
    trktime = 0
-   tracks = [0, 1, 2, 3, 4]
+   tracks = [ 0, 1, 2, 3, 4, 5, 6 ]
 
    read_midi (args[0])
 
