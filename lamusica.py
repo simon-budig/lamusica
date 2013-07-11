@@ -19,11 +19,11 @@ models = {
                        12, 14, 16, 17, 19, 21, 23,
                      # C2,
                        24 ],
-      "height"   : 70.0,
-      "offset"   : 14.0,
-      "distance" :  3.0,
-      "diameter" :  2.4,
-      "step"     :  7.0,
+      "height"   : 41.0,
+      "offset"   :  6.0,
+      "distance" :  2.0,
+      "diameter" :  1.8,
+      "step"     :  8.0,
    },
    "sankyo20" : {
       "lowest"   : 48,
@@ -42,20 +42,22 @@ models = {
    # http://www.njdean.co.uk/musical-movements-mbm30hp.htm
    # http://www.mmdigest.com/Gallery/Sounds/mg_Teamola30n.html
    "teanola30" : {
-      "lowest"   : 48,
-      "notes"    : [ #  C,       D,                    G,       A,       B,
-                        0,       2,                    7,       9,      11,
-                     # C1,      D1,      E1, F1, F#1, G1, G#1, A1, A#1, B1,
-                       12,      14,      16, 17,  18, 19,  20, 21,  22, 23,
+      "lowest"   : 41,
+      "notes"    : [
+                     #                        F,  F#,  G,  G#,  A,  A#,  B,
+                                              0,       2,
+                     # C1, C#1, D1, D#1, E1, F1, F#1, G1, G#1, A1, A#1, B1,
+                        7,       9,      11, 12,      14,      16, 17,  18,
                      # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2, A#2, B2,
-                       24,  25, 26,  27, 28, 29,  30, 31,  32, 33,  34, 35,
-                     # C3,      D3,      E3,
-                       36,      38,      40 ],
-      "height"   : 70.0, # (?)
-      "offset"   :  6.0, # (?)
-      "distance" :  2.0, # (?)
-      "diameter" :  1.8, # (?)
-      "step"     :  7.0, # (?)
+                       19,  20, 21,  22, 23, 24,  25, 26,  27, 28, 29,  30,
+                     # C3, C#3  D3, D#3, E3, F3,      G3,      A3
+                       31,  32, 33,  34, 35, 36,      38,      40
+                     ],
+      "height"   : 70.0,
+      "offset"   :  6.0,
+      "distance" :  2.0,
+      "diameter" :  1.8,
+      "step"     :  8.0,
    },
    # http://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5663
    "sankyo33" : {
@@ -66,11 +68,11 @@ models = {
                        12,  13, 14,  15, 16, 17,  18, 19,  20, 21,  22, 23,
                      # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2,
                        24,  25, 26,  27, 28, 29,  30, 31,  32, 33 ],
-      "height"   : 70.0, # (?)
-      "offset"   :  5.3, # (?)
-      "distance" :  1.8, # (?)
-      "diameter" :  1.7, # (?)
-      "step"     :  9.0, # (?)
+      "height"   : 70.0,
+      "offset"   :  5.3,
+      "distance" :  1.8,
+      "diameter" :  1.7,
+      "step"     :  8.0,
    }
 }
 
@@ -394,7 +396,7 @@ def output_midi (model, filename, notelist, mindelta):
    for i in range (len (notelist)):
       events += [(t, notes[i], 1) for t in notelist[i]]
       # add events to shut off the notes
-      events += [(t+255, notes[i], 0) for t in notelist[i]]
+      events += [(t+mindelta, notes[i], 0) for t in notelist[i]]
 
    events.sort()
 
@@ -489,7 +491,7 @@ if __name__=='__main__':
 
    band = [ {} for i in range (128) ]
    trktime = 0
-   tracks = [ 0, 1, 2, 3, 4, 5, 6 ]
+   tracks = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ]
 
    read_midi (args[0])
 
