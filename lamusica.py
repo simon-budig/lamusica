@@ -12,7 +12,8 @@ delta_ticks = 0
 
 models = {
    "sankyo15" : {
-      "lowest"   : 60,
+      # Gis Dur? SRSLY?
+      "lowest"   : 56,
       "notes"    : [ #  C,  D,  E,  F,  G,  A,  B,
                         0,  2,  4,  5,  7,  9, 11,
                      # C1, D1, E1, F1, G1, A1, B1,
