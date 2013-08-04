@@ -10,6 +10,8 @@ tracks = range (1024)
 
 delta_ticks = 0
 
+# Mensch macht bequem ca. 120-180 UPM.
+
 models = {
    "sankyo15" : {
       # Gis Dur? SRSLY?
@@ -25,6 +27,7 @@ models = {
       "distance" :  2.0,
       "diameter" :  1.8,
       "step"     :  8.0,
+      "speed"    :  300./49,     # mm/U
    },
    "sankyo20" : {
       "lowest"   : 48,
@@ -39,6 +42,7 @@ models = {
       "distance" :  3.0,
       "diameter" :  2.4,
       "step"     :  7.0,
+      "speed"    :  300./53,
    },
    # http://www.njdean.co.uk/musical-movements-mbm30hp.htm
    # http://www.mmdigest.com/Gallery/Sounds/mg_Teamola30n.html
@@ -59,6 +63,7 @@ models = {
       "distance" :  2.0,
       "diameter" :  1.8,
       "step"     :  8.0,
+      "speed"    :  300./45.5,
    },
    # http://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5663
    "sankyo33" : {
