@@ -94,8 +94,20 @@ def handle_midi_event (dt, command):
       pass
       # print >>sys.stderr, dt, ": noteoff"
    elif mc == 0x09:
-      # print >>sys.stderr, dt, ": noteon", ord (command[1])
+      # print >>sys.stderr, dt, ": noteon (%d)" % (ord(command[0]) & 0x0f), ord (command[1])
       band[ord (command[1])] [trktime] = 1
+   elif mc == 0x0b:
+      # print >>sys.stderr, dt, ": controller", ord (command[1])
+      pass
+   elif mc == 0x0c:
+      # print >>sys.stderr, dt, ": program change", ord (command[1])
+      pass
+   elif mc == 0x0d:
+      # print >>sys.stderr, dt, ": aftertouch", ord (command[1])
+      pass
+   elif mc == 0x0e:
+      # print >>sys.stderr, dt, ": pitch bend"
+      pass
    else:
       print >>sys.stderr, "dt: %d, event %r" % (dt, command)
 
@@ -129,9 +141,18 @@ def handle_midi_ticked_events (midi_data):
       elif ord(mc) in [0xf8, 0xfa, 0xfb, 0xfc]:
          command = mc
       elif ord(mc) == 0xff:
-         l = ord (t[1])
-         command = mc + t[:2+l]
-         t = t[2+l:]
+         # meta event
+         type = t[0]
+         t = t[1:]
+         command = mc + type
+         l = 0
+         while ord (t[0]) & 0x80:
+            command += t[0]
+            l = (l + (ord (t[0]) & 0x7f)) << 7
+            t = t[1:]
+         l += ord (t[0])
+         command += t[:l+1]
+         t = t[l+1:]
       elif ord(mc) in [0xf0, 0xf7]:
          command = mc
          l = 0
@@ -141,6 +162,7 @@ def handle_midi_ticked_events (midi_data):
             t = t[1:]
          l += ord (t[0])
          command += t[:l+1]
+         t = t[l+1:]
       else:
          raise Exception, 'unknown MIDI event: %d' % ord (t[0])
 
@@ -171,7 +193,8 @@ def read_midi (filename):
 
    while t:
       if len (t) < 8:
-         raise Exception, "Not enough bytes in MIDI file"
+         print >>sys.stderr, "%d bytes remaining at end of MIDI file" % len(t)
+         break
       chunkname = t[:4]
       chunklen = struct.unpack (">I", t[4:8])[0]
       if len (t) < 8+chunklen:
