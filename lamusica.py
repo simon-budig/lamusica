@@ -3,12 +3,6 @@ import sys, struct, math, getopt
 import cairo
 
 band = None
-trktime = 0
-
-cur_track = 0
-tracks = range (1024)
-
-delta_ticks = 0
 
 # Mensch macht bequem ca. 120-180 UPM.
 
@@ -81,129 +75,6 @@ models = {
       "step"     :  8.0,
    }
 }
-
-
-
-def handle_midi_event (dt, command):
-   global band, trktime
-
-   trktime += dt
-   mc = ord (command[0]) >> 4
-
-   if mc == 0x08:
-      pass
-      # print >>sys.stderr, dt, ": noteoff"
-   elif mc == 0x09:
-      # print >>sys.stderr, dt, ": noteon (%d)" % (ord(command[0]) & 0x0f), ord (command[1])
-      band[ord (command[1])] [trktime] = 1
-   elif mc == 0x0b:
-      # print >>sys.stderr, dt, ": controller", ord (command[1])
-      pass
-   elif mc == 0x0c:
-      # print >>sys.stderr, dt, ": program change", ord (command[1])
-      pass
-   elif mc == 0x0d:
-      # print >>sys.stderr, dt, ": aftertouch", ord (command[1])
-      pass
-   elif mc == 0x0e:
-      # print >>sys.stderr, dt, ": pitch bend"
-      pass
-   else:
-      print >>sys.stderr, "dt: %d, event %r" % (dt, command)
-
-
-
-def handle_midi_ticked_events (midi_data):
-   global trktime
-
-   trktime = 0
-   mc = None
-   t = midi_data
-   while t:
-      dt = 0
-      while ord (t[0]) & 0x80:
-         dt = (dt + (ord (t[0]) & 0x7f)) << 7
-         t = t[1:]
-      dt += ord (t[0])
-
-      t = t[1:]
-      
-      if ord(t[0]) & 0x80:
-         mc = t[0]
-         t = t[1:]
-
-      if ord(mc) >> 4 in [0x08, 0x09, 0x0a, 0x0b, 0x0e]:
-         command = mc + t[:2]
-         t = t[2:]
-      elif ord(mc) >> 4 in [0x0c, 0x0d]:
-         command = mc + t[:1]
-         t = t[1:]
-      elif ord(mc) in [0xf8, 0xfa, 0xfb, 0xfc]:
-         command = mc
-      elif ord(mc) == 0xff:
-         # meta event
-         type = t[0]
-         t = t[1:]
-         command = mc + type
-         l = 0
-         while ord (t[0]) & 0x80:
-            command += t[0]
-            l = (l + (ord (t[0]) & 0x7f)) << 7
-            t = t[1:]
-         l += ord (t[0])
-         command += t[:l+1]
-         t = t[l+1:]
-      elif ord(mc) in [0xf0, 0xf7]:
-         command = mc
-         l = 0
-         while ord (t[0]) & 0x80:
-            command += t[0]
-            l = (l + (ord (t[0]) & 0x7f)) << 7
-            t = t[1:]
-         l += ord (t[0])
-         command += t[:l+1]
-         t = t[l+1:]
-      else:
-         raise Exception, 'unknown MIDI event: %d' % ord (t[0])
-
-      handle_midi_event (dt, command)
-
-
-
-def handle_chunk (chunkname, chunkdata):
-   global cur_track, delta_ticks
-
-   if chunkname == 'MThd':
-      if len (chunkdata) != 6:
-         raise Exception, "invalid MThd chunk"
-      mtype, n_tracks, delta_ticks = struct.unpack (">hhh", chunkdata)
-      print >>sys.stderr, "type: %d, n_tracks: %d, delta_ticks: %d" % (mtype, n_tracks, delta_ticks)
-
-   elif chunkname == 'MTrk':
-      if cur_track in tracks:
-         handle_midi_ticked_events (chunkdata)
-      else:
-         print >>sys.stderr, "ignoring track %d\n" % cur_track
-      cur_track += 1
-
-
-
-def read_midi (filename):
-   t = file (filename).read()
-
-   while t:
-      if len (t) < 8:
-         print >>sys.stderr, "%d bytes remaining at end of MIDI file" % len(t)
-         break
-      chunkname = t[:4]
-      chunklen = struct.unpack (">I", t[4:8])[0]
-      if len (t) < 8+chunklen:
-         raise Exception, "Not enough bytes in MIDI file"
-      chunkdata = t[8:8+chunklen]
-
-      print >>sys.stderr, chunkname, chunklen
-      handle_chunk (chunkname, chunkdata)
-      t = t[8+chunklen:]
 
 
 
@@ -457,6 +328,153 @@ def output_midi (model, filename, notelist, mindelta):
 
 
 
+class Note (object):
+   def __init__(self, note, ticks, channel, track):
+      self.note = note
+      self.ticks = ticks
+      self.channel = channel
+      self.track = track
+
+
+
+class PianoRoll (object):
+   def __init__ (self):
+      self.notes = []
+
+   def add (self, note):
+      self.notes.append (note)
+
+
+
+class MidiImporter (object):
+   def __init__ (self, target):
+      self.target = target
+      self.timediv = 0
+      self.num_tracks = 0
+
+
+   def import_event (self, ticks, track, eventdata):
+      mc = ord (command[0]) >> 4
+      ch = ord (command[0]) & 0x0f
+     
+      if mc == 0x08:
+         pass
+         # print >>sys.stderr, dt, ": noteoff"
+      elif mc == 0x09:
+         # print >>sys.stderr, dt, ": noteon (%d)" % (ord(command[0]) & 0x0f), ord (command[1])
+         n = Note (ord (command[1]), ticks, ch, track)
+         self.target.add (n)
+      elif mc == 0x0b:
+         # print >>sys.stderr, dt, ": controller", ord (command[1])
+         pass
+      elif mc == 0x0c:
+         # print >>sys.stderr, dt, ": program change", ord (command[1])
+         pass
+      elif mc == 0x0d:
+         # print >>sys.stderr, dt, ": aftertouch", ord (command[1])
+         pass
+      elif mc == 0x0e:
+         # print >>sys.stderr, dt, ": pitch bend"
+         pass
+      else:
+         print >>sys.stderr, "dt: %d, event %r" % (dt, command)
+         pass
+
+
+   def import_ticked_events (self, track, eventdata):
+      ticks = 0
+      mc = None
+      t = eventdata
+      while t:
+         dt = 0
+         while ord (t[0]) & 0x80:
+            dt = (dt + (ord (t[0]) & 0x7f)) << 7
+            t = t[1:]
+         dt += ord (t[0])
+     
+         t = t[1:]
+         
+         if ord(t[0]) & 0x80:
+            mc = t[0]
+            t = t[1:]
+     
+         if ord(mc) >> 4 in [0x08, 0x09, 0x0a, 0x0b, 0x0e]:
+            command = mc + t[:2]
+            t = t[2:]
+         elif ord(mc) >> 4 in [0x0c, 0x0d]:
+            command = mc + t[:1]
+            t = t[1:]
+         elif ord(mc) in [0xf8, 0xfa, 0xfb, 0xfc]:
+            command = mc
+         elif ord(mc) == 0xff:
+            # meta event
+            type = t[0]
+            t = t[1:]
+            command = mc + type
+            l = 0
+            while ord (t[0]) & 0x80:
+               command += t[0]
+               l = (l + (ord (t[0]) & 0x7f)) << 7
+               t = t[1:]
+            l += ord (t[0])
+            command += t[:l+1]
+            t = t[l+1:]
+         elif ord(mc) in [0xf0, 0xf7]:
+            command = mc
+            l = 0
+            while ord (t[0]) & 0x80:
+               command += t[0]
+               l = (l + (ord (t[0]) & 0x7f)) << 7
+               t = t[1:]
+            l += ord (t[0])
+            command += t[:l+1]
+            t = t[l+1:]
+         else:
+            raise Exception, 'unknown MIDI event: %d' % ord (t[0])
+     
+         ticks += dt
+         self.import_event (ticks, track, command)
+
+
+   def import_chunk (self, chunkname, chunkdata):
+      if self.timediv != 0 and chunkname != 'MThd':
+         raise Exception, "first chunk is not MThd"
+
+      if chunkname == 'MThd':
+         if self.timediv != 0:
+            raise Exception, "multiple MThd chunks"
+
+         if len (chunkdata) != 6:
+            raise Exception, "invalid MThd chunk"
+         mtype, n_tracks, delta_ticks = struct.unpack (">hhh", chunkdata)
+         self.timediv = delta_ticks
+
+         print >>sys.stderr, "type: %d, n_tracks: %d, delta_ticks: %d" % (mtype, n_tracks, delta_ticks)
+
+      elif chunkname == 'MTrk':
+         self.import_ticked_events (self.num_tracks, chunkdata)
+         self.num_tracks += 1
+
+
+   def import_file (self, filename):
+      t = file (filename).read()
+     
+      while t:
+         if len (t) < 8:
+            print >>sys.stderr, "%d bytes remaining at end of MIDI file" % len(t)
+            break
+         chunkname = t[:4]
+         chunklen = struct.unpack (">I", t[4:8])[0]
+         if len (t) < 8+chunklen:
+            raise Exception, "Not enough bytes in MIDI file"
+         chunkdata = t[8:8+chunklen]
+     
+         print >>sys.stderr, chunkname, chunklen
+         self.impot_chunk (chunkname, chunkdata)
+         t = t[8+chunklen:]
+
+
+
 def usage ():
    print >>sys.stderr, "Usage: %s [arguments] <midi-file>" % sys.argv[0]
    print >>sys.stderr, "  -h, --help: show usage"
@@ -519,8 +537,6 @@ if __name__=='__main__':
       sys.exit (2)
 
    band = [ {} for i in range (128) ]
-   trktime = 0
-   tracks = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ]
 
    read_midi (args[0])
 
