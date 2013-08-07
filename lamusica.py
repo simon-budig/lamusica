@@ -374,6 +374,7 @@ class PianoRoll (object):
          band[i] = [n.ticks for n in self.notes
                         if n.note + self.transpose in source_notes
                         if not n.filtered]
+         band[i] = sorted (list (set (band[i])))
 
       return band
 
@@ -393,7 +394,7 @@ class PianoRoll (object):
       return mindelta
 
 
-   def filter_repetition (self, delta, first=0):
+   def filter_repetition (self, delta):
       self.notes.sort (key=lambda x: x.ticks)
       self.notes.sort (key=lambda x: x.note)
       count = 0
@@ -402,20 +403,14 @@ class PianoRoll (object):
          if n1.note == n0.note:
             d = n1.ticks - n0.ticks
             if d < delta:
-               if first:
-                  n0.filtered.add ("delta")
-                  n1.filtered.discard ("delta")
-                  n0 = n1
-               else:
-                  n0.filtered.discard ("delta")
-                  n1.filtered.add ("delta")
+               n1.filtered.add ("delta")
                count += 1
             else:
-               n0.filtered.discard ("delta")
                n1.filtered.discard ("delta")
                n0 = n1
          else:
             n0 = n1
+            n0.filtered.discard ("delta")
 
       return count
            
@@ -582,7 +577,7 @@ if __name__=='__main__':
    midifile = None
    svgfile = None
    pdffile = None
-   filter = 0
+   filter = 1
    boxtype = "sankyo20"
    transpose = None
 
@@ -618,9 +613,7 @@ if __name__=='__main__':
    mi.import_file (args[0])
 
    print roll.min_repetition ()
-
-   if filter > 0:
-      roll.filter_repetition (filter)
+   roll.filter_repetition (filter)
 
    roll.transpose = 4
    notelist = roll.get_compat_band (model)
