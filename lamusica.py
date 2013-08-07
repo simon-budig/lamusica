@@ -2,9 +2,9 @@
 import sys, struct, math, getopt
 import cairo
 
-band = None
-
 # Mensch macht bequem ca. 120-180 UPM.
+
+delta_ticks = 0
 
 models = {
    "sankyo15" : {
@@ -329,21 +329,96 @@ def output_midi (model, filename, notelist, mindelta):
 
 
 class Note (object):
-   def __init__(self, note, ticks, channel, track):
+   def __init__ (self, note, ticks, channel, track):
       self.note = note
       self.ticks = ticks
       self.channel = channel
       self.track = track
+      self.filtered = set()
 
+
+   def __repr__ (self):
+      return "Note (%s, %d, %d, %d)" % (self.note, self.ticks, self.channel, self.track)
 
 
 class PianoRoll (object):
-   def __init__ (self):
-      self.notes = []
+   def __init__ (self, notes=[]):
+      self.notes = notes
+      self.transpose = 0
+
+
+   def __repr__ (self):
+      return "PianoRoll (%r)" % (self.notes)
+
 
    def add (self, note):
       self.notes.append (note)
 
+
+   def get_compat_band (self, model):
+      self.notes.sort (key=lambda x: x.ticks)
+
+      notes = [n + model["lowest"] for n in model["notes"]]
+      band = [[] for i in range (len(notes))]
+      for i in range (len (notes)):
+         source_notes = [notes[i]]
+         n = notes[i] - 12
+         while n >= 0 and n not in notes:
+            source_notes.append (n)
+            n -= 12
+         n = notes[i] + 12
+         while n <= 127 and  n not in notes:
+            source_notes.append (n)
+            n += 12
+
+         band[i] = [n.ticks for n in self.notes
+                        if n.note + self.transpose in source_notes
+                        if not n.filtered]
+
+      return band
+
+
+   def min_repetition (self):
+      self.notes.sort (key=lambda x: x.ticks)
+      self.notes.sort (key=lambda x: x.note)
+      mindelta = sys.maxint
+      n0 = self.notes[0]
+      for n in self.notes[1:]:
+         d = n.ticks - n0.ticks
+         # notes at the same tick are considered identical
+         if n.note == n0.note and d > 0 and d < mindelta:
+            mindelta = n.ticks - n0.ticks
+         n0 = n
+
+      return mindelta
+
+
+   def filter_repetition (self, delta, first=0):
+      self.notes.sort (key=lambda x: x.ticks)
+      self.notes.sort (key=lambda x: x.note)
+      count = 0
+      n0 = self.notes[0]
+      for n1 in self.notes[1:]:
+         if n1.note == n0.note:
+            d = n1.ticks - n0.ticks
+            if d < delta:
+               if first:
+                  n0.filtered.add ("delta")
+                  n1.filtered.discard ("delta")
+                  n0 = n1
+               else:
+                  n0.filtered.discard ("delta")
+                  n1.filtered.add ("delta")
+               count += 1
+            else:
+               n0.filtered.discard ("delta")
+               n1.filtered.discard ("delta")
+               n0 = n1
+         else:
+            n0 = n1
+
+      return count
+           
 
 
 class MidiImporter (object):
@@ -354,30 +429,30 @@ class MidiImporter (object):
 
 
    def import_event (self, ticks, track, eventdata):
-      mc = ord (command[0]) >> 4
-      ch = ord (command[0]) & 0x0f
+      mc = ord (eventdata[0]) >> 4
+      ch = ord (eventdata[0]) & 0x0f
      
       if mc == 0x08:
          pass
-         # print >>sys.stderr, dt, ": noteoff"
+         # print >>sys.stderr, ticks, ": noteoff"
       elif mc == 0x09:
-         # print >>sys.stderr, dt, ": noteon (%d)" % (ord(command[0]) & 0x0f), ord (command[1])
-         n = Note (ord (command[1]), ticks, ch, track)
+         # print >>sys.stderr, ticks, ": noteon (%d)" % (ord(eventdata[0]) & 0x0f), ord (eventdata[1])
+         n = Note (ord (eventdata[1]), ticks, ch, track)
          self.target.add (n)
       elif mc == 0x0b:
-         # print >>sys.stderr, dt, ": controller", ord (command[1])
+         # print >>sys.stderr, ticks, ": controller", ord (eventdata[1])
          pass
       elif mc == 0x0c:
-         # print >>sys.stderr, dt, ": program change", ord (command[1])
+         # print >>sys.stderr, ticks, ": program change", ord (eventdata[1])
          pass
       elif mc == 0x0d:
-         # print >>sys.stderr, dt, ": aftertouch", ord (command[1])
+         # print >>sys.stderr, ticks, ": aftertouch", ord (eventdata[1])
          pass
       elif mc == 0x0e:
-         # print >>sys.stderr, dt, ": pitch bend"
+         # print >>sys.stderr, ticks, ": pitch bend"
          pass
       else:
-         print >>sys.stderr, "dt: %d, event %r" % (dt, command)
+         print >>sys.stderr, "ticks: %d, event %r" % (ticks, eventdata)
          pass
 
 
@@ -437,10 +512,12 @@ class MidiImporter (object):
 
 
    def import_chunk (self, chunkname, chunkdata):
-      if self.timediv != 0 and chunkname != 'MThd':
+      if self.timediv == 0 and chunkname != 'MThd':
          raise Exception, "first chunk is not MThd"
 
       if chunkname == 'MThd':
+         global delta_ticks
+
          if self.timediv != 0:
             raise Exception, "multiple MThd chunks"
 
@@ -470,7 +547,7 @@ class MidiImporter (object):
          chunkdata = t[8:8+chunklen]
      
          print >>sys.stderr, chunkname, chunklen
-         self.impot_chunk (chunkname, chunkdata)
+         self.import_chunk (chunkname, chunkdata)
          t = t[8+chunklen:]
 
 
@@ -536,15 +613,19 @@ if __name__=='__main__':
       print >>sys.stderr, "  * %s" % "\n  * ".join (ms)
       sys.exit (2)
 
-   band = [ {} for i in range (128) ]
+   roll = PianoRoll()
+   mi = MidiImporter (roll)
+   mi.import_file (args[0])
 
-   read_midi (args[0])
-
-   notelist, mindelta = prepare_band (model, band, transpose)
+   print roll.min_repetition ()
 
    if filter > 0:
-      notelist, mindelta = filter_band (model, notelist, filter)
-      
+      roll.filter_repetition (filter)
+
+   roll.transpose = 4
+   notelist = roll.get_compat_band (model)
+   mindelta = roll.min_repetition ()
+
    if midifile:
       output_midi (model, midifile, notelist, mindelta)
    
