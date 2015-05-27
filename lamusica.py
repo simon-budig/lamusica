@@ -108,7 +108,7 @@ def prepare_band (model, band, fix_trans):
       if errcount < transpose_error:
          transpose_error = errcount
          transpose = trans
-      
+
    print >>sys.stderr, "transposing by %d octaves and %d halftones" % (transpose / 12, transpose % 12)
    print >>sys.stderr, "    --> %d notes not playable" % (transpose_error)
 
@@ -158,7 +158,7 @@ def filter_band (model, notelist, filter):
             newnotes.append (note)
             last_time = note
       notelist[i] = newnotes
-            
+
       for j in range (len (notelist[i]) - 1):
          delta = notelist[i][j+1] - notelist[i][j]
          deltas[delta] = deltas.get (delta, 0) + 1
@@ -203,7 +203,7 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
 
       if (alltimes[i] - alltimes[i-1]) * step > radius * 4:
          breakpos = middlepos
-         
+
    splits.append (length)
    print splits
 
@@ -394,6 +394,39 @@ class PianoRoll (object):
       return mindelta
 
 
+   def find_transpose (self, available_notes,
+                       allow_octaves=True, allow_halftones=True):
+      transpose = 0
+      transpose_error = sys.maxint
+
+      highest = max ([n.note for n in self.notes])
+      lowest  = min ([n.note for n in self.notes])
+
+      notecount = [len ([n for n in self.notes if n.note == i])
+                   for i in range (128)]
+
+      for trans in range (min (available_notes) - highest - 1,
+                          max (available_notes) - lowest + 2):
+         if not allow_halftones and trans % 12 != 0:
+            continue
+
+         if not allow_halftones and not allow_octaves and trans % 12 == 0:
+            continue
+
+         errcount = 0
+         for i in range (128):
+            if (i+trans) not in available_notes:
+               errcount += notecount[i]
+         if errcount < transpose_error or (errcount == transpose_error and abs(trans) < abs (transpose)):
+            transpose_error = errcount
+            transpose = trans
+
+      print >>sys.stderr, "transposing by %d octaves and %d halftones" % (transpose / 12, transpose % 12)
+      print >>sys.stderr, "    --> %d notes not playable" % (transpose_error)
+
+      return transpose
+
+
    def filter_repetition (self, delta):
       self.notes.sort (key=lambda x: x.ticks)
       self.notes.sort (key=lambda x: x.note)
@@ -413,7 +446,7 @@ class PianoRoll (object):
             n0.filtered.discard ("delta")
 
       return count
-           
+
 
 
 class MidiImporter (object):
@@ -426,7 +459,7 @@ class MidiImporter (object):
    def import_event (self, ticks, track, eventdata):
       mc = ord (eventdata[0]) >> 4
       ch = ord (eventdata[0]) & 0x0f
-     
+
       if mc == 0x08:
          pass
          # print >>sys.stderr, ticks, ": noteoff"
@@ -461,13 +494,13 @@ class MidiImporter (object):
             dt = (dt + (ord (t[0]) & 0x7f)) << 7
             t = t[1:]
          dt += ord (t[0])
-     
+
          t = t[1:]
-         
+
          if ord(t[0]) & 0x80:
             mc = t[0]
             t = t[1:]
-     
+
          if ord(mc) >> 4 in [0x08, 0x09, 0x0a, 0x0b, 0x0e]:
             command = mc + t[:2]
             t = t[2:]
@@ -501,7 +534,7 @@ class MidiImporter (object):
             t = t[l+1:]
          else:
             raise Exception, 'unknown MIDI event: %d' % ord (t[0])
-     
+
          ticks += dt
          self.import_event (ticks, track, command)
 
@@ -530,7 +563,7 @@ class MidiImporter (object):
 
    def import_file (self, filename):
       t = file (filename).read()
-     
+
       while t:
          if len (t) < 8:
             print >>sys.stderr, "%d bytes remaining at end of MIDI file" % len(t)
@@ -540,7 +573,7 @@ class MidiImporter (object):
          if len (t) < 8+chunklen:
             raise Exception, "Not enough bytes in MIDI file"
          chunkdata = t[8:8+chunklen]
-     
+
          print >>sys.stderr, chunkname, chunklen
          self.import_chunk (chunkname, chunkdata)
          t = t[8+chunklen:]
@@ -615,13 +648,17 @@ if __name__=='__main__':
    print roll.min_repetition ()
    roll.filter_repetition (filter)
 
-   roll.transpose = 4
+   if transpose == None:
+      roll.transpose = roll.find_transpose ([model["lowest"] + i for i in model["notes"]])
+   else:
+      roll.transpose = transpose
+
    notelist = roll.get_compat_band (model)
    mindelta = roll.min_repetition ()
 
    if midifile:
       output_midi (model, midifile, notelist, mindelta)
-   
+
    if pdffile:
       output_file (model, pdffile, True, notelist, mindelta)
    if svgfile:
