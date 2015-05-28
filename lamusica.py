@@ -16,6 +16,7 @@ models = {
                        12, 14, 16, 17, 19, 21, 23,
                      # C2,
                        24 ],
+      "program"  :  1,
       "height"   : 41.0,
       "offset"   :  6.0,
       "distance" :  2.0,
@@ -31,6 +32,7 @@ models = {
                        12, 14, 16, 17, 19, 21, 23,
                      # C2, D2, E2, F2, G2, A2,
                        24, 26, 28, 29, 31, 33 ],
+      "program"  :  2,
       "height"   : 70.0,
       "offset"   :  6.5,
       "distance" :  3.0,
@@ -52,6 +54,7 @@ models = {
                      # C3, C#3  D3, D#3, E3, F3,      G3,      A3
                        31,  32, 33,  34, 35, 36,      38,      40
                      ],
+      "program"  :  3,
       "height"   : 70.0,
       "offset"   :  6.0,
       "distance" :  2.0,
@@ -68,6 +71,7 @@ models = {
                        12,  13, 14,  15, 16, 17,  18, 19,  20, 21,  22, 23,
                      # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2,
                        24,  25, 26,  27, 28, 29,  30, 31,  32, 33 ],
+      "program"  :  4,
       "height"   : 70.0,
       "offset"   :  5.3,
       "distance" :  1.8,
@@ -302,6 +306,9 @@ def output_midi (model, filename, notelist, mindelta):
 
    last_time = 0
    eventdata = ""
+   # program select
+   eventdata += chr (0x00) + chr (0xc0) + chr (model["program"])
+
    for t, i, on in events:
       dt = t - last_time
       if (dt >> 21):
