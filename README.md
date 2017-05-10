@@ -16,7 +16,7 @@ laser cutter...
 The first holes were cut there and it seemed to work...
 
 In 2013 I did a collaboration with Jørgen Lang to encode a composition from
-Rüddiger Oppermann onto tape, so that his friends could surprise him with a
+Rüdiger Oppermann onto tape, so that his friends could surprise him with a
 music box. It was well received   :)
 
 
