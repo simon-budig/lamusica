@@ -9,6 +9,7 @@ import cairo
 delta_ticks = 0
 
 models = {
+   # https://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=4905
    "sankyo15" : {
       # Gis Dur? SRSLY?
       "lowest"   : 56,
@@ -27,6 +28,7 @@ models = {
       "step"     :  8.0,
       "speed"    :  300./49,     # mm/U
    },
+   # https://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=4972
    "sankyo20" : {
       "lowest"   : 48,
       "notes"    : [ #  C,  D,  E,  F,  G,  A,  B,
@@ -45,6 +47,7 @@ models = {
    },
    # http://www.njdean.co.uk/musical-movements-mbm30hp.htm
    # http://www.mmdigest.com/Gallery/Sounds/mg_Teamola30n.html
+   # https://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5984
    "teanola30" : {
       "lowest"   : 41,
       "notes"    : [
@@ -65,6 +68,7 @@ models = {
       "step"     :  8.0,
       "speed"    :  300./45.5,
    },
+   # http://www.leturlutain.fr/index.php?item=33-notes-sankyo-music-box&action=article&group_id=10000033&aid=5796&lang=EN
    # http://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5663
    "sankyo33" : {
       "lowest"   : 48,
