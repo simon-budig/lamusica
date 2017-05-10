@@ -462,9 +462,11 @@ class MidiImporter (object):
       self.target = target
       self.timediv = 0
       self.num_tracks = 0
+      self.cur_program = -1
 
 
    def import_event (self, ticks, track, eventdata):
+      cur_program = -1;
       mc = ord (eventdata[0]) >> 4
       ch = ord (eventdata[0]) & 0x0f
 
@@ -473,13 +475,15 @@ class MidiImporter (object):
          # print >>sys.stderr, ticks, ": noteoff"
       elif mc == 0x09:
          # print >>sys.stderr, ticks, ": noteon (%d)" % (ord(eventdata[0]) & 0x0f), ord (eventdata[1])
-         n = Note (ord (eventdata[1]), ticks, ch, track)
-         self.target.add (n)
+         if self.cur_program != 127: # exclude percussion track
+            n = Note (ord (eventdata[1]), ticks, ch, track)
+            self.target.add (n)
       elif mc == 0x0b:
          # print >>sys.stderr, ticks, ": controller", ord (eventdata[1])
          pass
       elif mc == 0x0c:
-         # print >>sys.stderr, ticks, ": program change", ord (eventdata[1])
+         print >>sys.stderr, ticks, ": program change", ord (eventdata[1])
+         self.cur_program = ord (eventdata[1])
          pass
       elif mc == 0x0d:
          # print >>sys.stderr, ticks, ": aftertouch", ord (eventdata[1])
