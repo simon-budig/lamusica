@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# (c) 2011-2017 Simon Budig <simon@budig.de>
+
 import sys, struct, math, getopt
 import cairo
 
