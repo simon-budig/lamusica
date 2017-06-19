@@ -314,7 +314,7 @@ class PianoRoll (object):
             n += 12
 
          band[i] = [n.ticks for n in self.notes
-                        if n.note + self.transpose in source_notes
+                        if n.note + self.transpose[n.track % len (self.transpose)] in source_notes
                         if not n.filtered]
          band[i] = sorted (list (set (band[i])))
 
@@ -569,7 +569,7 @@ if __name__=='__main__':
          usage()
          sys.exit()
       elif o in ("-t", "--transpose"):
-         transpose = int (a)
+         transpose = [ int (t) for t in a.split (",") ]
       elif o in ("-f", "--filter"):
          filter = int (a)
       elif o in ("-b", "--box"):
