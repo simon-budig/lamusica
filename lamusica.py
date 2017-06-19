@@ -187,7 +187,9 @@ def filter_band (model, notelist, filter):
 def output_file (model, filename, is_pdf, notelist, mindelta):
    pwidth  = 420.0
    pheight = 297.0
-   pborder = 10
+   pwidth  = 700.0 - 20
+   pheight = 500.0 - 20
+   pborder = 10    - 8
    height  = model["height"]
    offset  = model["offset"]
    radius  = model["diameter"] / 2
@@ -255,26 +257,34 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
    while splits:
       x1 = splits.pop (0)
       cr.set_source_rgb (0, 0, 1)
-      cr.rectangle (pborder, y0, x1 - x0, y1 - y0)
+      cr.set_line_width (0.4)
+      # cr.rectangle (pborder, y0, x1 - x0, y1 - y0)
+      cr.move_to (pborder, y0)
+      cr.line_to (pborder, y1)
+      cr.move_to (pborder + x1 - x0, y0)
+      cr.line_to (pborder + x1 - x0, y1)
       cr.stroke ()
 
-      cr.set_source_rgb (0.7, 0.7, 0.7)
-      for i in range (len (model["notes"])):
-         y = y0 + offset + i * dist
-         cr.move_to (pborder, y)
-         cr.line_to (pborder + x1 - x0, y)
-         if model["notes"][i] % 12 in [0, 2, 4, 5, 7, 9, 11]:
-            if model["notes"][i] % 12 == 0:
-               cr.set_line_width (0.4)
+      if 0:
+         cr.set_source_rgb (0.7, 0.7, 0.7)
+         for i in range (len (model["notes"])):
+            y = y0 + offset + i * dist
+            cr.move_to (pborder, y)
+            cr.line_to (pborder + x1 - x0, y)
+            if model["notes"][i] % 12 in [0, 2, 4, 5, 7, 9, 11]:
+               if model["notes"][i] % 12 == 0:
+                  cr.set_line_width (0.4)
+               else:
+                  cr.set_line_width (0.2)
+               cr.set_dash ([], 0)
             else:
                cr.set_line_width (0.2)
-            cr.set_dash ([], 0)
-         else:
-            cr.set_line_width (0.2)
-            cr.set_dash ([.5, 1], 0)
-         cr.stroke ()
+               cr.set_dash ([.5, 1], 0)
+            cr.stroke ()
 
       cr.set_dash ([], 0)
+      cr.set_line_width (0.4)
+      border_end = pborder;
       while holes and holes[0][0] < x1:
          x, y = holes.pop (0)
          cr.new_sub_path ()
@@ -283,6 +293,20 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
          cr.arc (x - x0 + pborder, y + y0, radius, 1.0*math.pi, 1.5*math.pi)
          cr.arc (x - x0 + pborder, y + y0, radius, 1.5*math.pi, 2.0*math.pi)
          cr.close_path ()
+         if x - x0 + pborder - border_end >= 50:
+            cr.move_to (border_end, y0)
+            cr.line_to (x - x0 + pborder, y0)
+            cr.move_to (border_end, y1)
+            cr.line_to (x - x0 + pborder, y1)
+            cr.new_sub_path ()
+            border_end = x - x0 + pborder
+
+      if border_end < x1:
+         cr.move_to (border_end, y0)
+         cr.line_to (x1 - x0 + pborder, y0)
+         cr.move_to (border_end, y1)
+         cr.line_to (x1 - x0 + pborder, y1)
+         cr.new_sub_path ()
 
       cr.set_source_rgb (1, 0, 0)
       cr.stroke ()
@@ -476,11 +500,15 @@ class MidiImporter (object):
       mc = ord (eventdata[0]) >> 4
       ch = ord (eventdata[0]) & 0x0f
 
+      # fix up noteon with velocity = 0 to noteoff.
+      if mc == 0x09 and ord (eventdata[2]) == 0:
+         mc = 0x08
+
       if mc == 0x08:
          pass
          # print >>sys.stderr, ticks, ": noteoff"
       elif mc == 0x09:
-         # print >>sys.stderr, ticks, ": noteon (%d)" % (ord(eventdata[0]) & 0x0f), ord (eventdata[1])
+         # print >>sys.stderr, ticks, ": noteon (%d)" % (ord(eventdata[0]) & 0x0f), ord (eventdata[1]), ord (eventdata[2])
          if self.cur_program != 127: # exclude percussion track
             n = Note (ord (eventdata[1]), ticks, ch, track)
             self.target.add (n)
