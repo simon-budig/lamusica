@@ -42,7 +42,7 @@ models = {
       "offset"   :  6.5,
       "distance" :  3.0,
       "diameter" :  2.4,
-      "step"     :  7.0,
+      "step"     :  8.0,
       "speed"    :  300./53,
    },
    # http://www.njdean.co.uk/musical-movements-mbm30hp.htm
@@ -65,7 +65,7 @@ models = {
       "offset"   :  6.0,
       "distance" :  2.0,
       "diameter" :  1.8,
-      "step"     :  8.0,
+      "step"     :  7.25,
       "speed"    :  300./45.5,
    },
    # http://www.leturlutain.fr/index.php?item=33-notes-sankyo-music-box&action=article&group_id=10000033&aid=5796&lang=EN
@@ -89,8 +89,6 @@ models = {
 
 
 def output_file (model, filename, is_pdf, notelist, mindelta):
-   pwidth  = 420.0
-   pheight = 297.0
    pwidth  = 700.0 - 20
    pheight = 500.0 - 20
    pborder = 10    - 8
@@ -286,7 +284,7 @@ class Note (object):
 class PianoRoll (object):
    def __init__ (self, notes=[]):
       self.notes = notes
-      self.transpose = 0
+      self.transpose = [0]
 
 
    def __repr__ (self):
@@ -599,7 +597,7 @@ if __name__=='__main__':
    roll.filter_repetition (filter)
 
    if transpose == None:
-      roll.transpose = roll.find_transpose ([model["lowest"] + i for i in model["notes"]])
+      roll.transpose = [ roll.find_transpose ([model["lowest"] + i for i in model["notes"]]) ]
    else:
       roll.transpose = transpose
 
