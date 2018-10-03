@@ -12,13 +12,13 @@ models = {
    # https://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=4905
    "sankyo15" : {
       # Gis Dur? SRSLY?
-      "lowest"   : 56,
+      "lowest"   : 68,  # G#4 / g#'
       "notes"    : [
-                     #                       G#1, A#1,
+                     #                       G#4, A#4,
                                                0,   2,
-                     # C2, C#2, D#2, F2, G2, G#2, A#2,
+                     # C5, C#5, D#5, F5, G5, G#5, A#5,
                         4,   5,   7,  9, 11,  12,  14,
-                     # C3, C#3, D#3, F3, G3, G#3,
+                     # C6, C#6, D#6, F6, G6, G#6,
                        16,  17,  19, 21, 23,  24 ],
       "program"  :  1,
       "height"   : 41.0,
@@ -30,34 +30,34 @@ models = {
    },
    # https://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=4972
    "sankyo20" : {
-      "lowest"   : 48,
-      "notes"    : [ #  C,  D,  E,  F,  G,  A,  B,
+      "lowest"   : 60,  # C4 / c'
+      "notes"    : [ # C4, D4, E4, F4, G4, A4, B4,
                         0,  2,  4,  5,  7,  9, 11,
-                     # C1, D1, E1, F1, G1, A1, B1,
+                     # C5, D5, E5, F5, G5, A5, B5,
                        12, 14, 16, 17, 19, 21, 23,
-                     # C2, D2, E2, F2, G2, A2,
+                     # C6, D6, E6, F6, G6, A6,
                        24, 26, 28, 29, 31, 33 ],
       "program"  :  2,
       "height"   : 70.0,
       "offset"   :  6.5,
       "distance" :  3.0,
       "diameter" :  2.4,
-      "step"     :  8.0,
+      "step"     :  7.0,
       "speed"    :  300./53,
    },
    # http://www.njdean.co.uk/musical-movements-mbm30hp.htm
    # http://www.mmdigest.com/Gallery/Sounds/mg_Teamola30n.html
    # https://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5984
    "teanola30" : {
-      "lowest"   : 41,
+      "lowest"   : 53,  # F3 / f
       "notes"    : [
-                     #                        F,  F#,  G,  G#,  A,  A#,  B,
+                     #                       F3, F#3, G3, G#3, A3, A#3, B3,
                                               0,       2,
-                     # C1, C#1, D1, D#1, E1, F1, F#1, G1, G#1, A1, A#1, B1,
+                     # C4, C#4, D4, D#4, E4, F4, F#4, G4, G#4, A4, A#4, B4,
                         7,       9,      11, 12,      14,      16, 17,  18,
-                     # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2, A#2, B2,
+                     # C5, C#5, D5, D#5, E5, F5, F#5, G5, G#5, A5, A#5, B5,
                        19,  20, 21,  22, 23, 24,  25, 26,  27, 28, 29,  30,
-                     # C3, C#3, D3, D#3, E3, F3,      G3,      A3
+                     # C6, C#6, D6, D#6, E6, F6, F#6, G6, G#6, A6
                        31,  32, 33,  34, 35, 36,      38,      40
                      ],
       "program"  :  3,
@@ -71,12 +71,12 @@ models = {
    # http://www.leturlutain.fr/index.php?item=33-notes-sankyo-music-box&action=article&group_id=10000033&aid=5796&lang=EN
    # http://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5663
    "sankyo33" : {
-      "lowest"   : 48,
-      "notes"    : [ #  C,       D,  D#,  E,  F,  F#,  G,  F#,  A,  A#,  B,
+      "lowest"   : 60,  # C4 / c'
+      "notes"    : [ # C4, C#4  D4, D#4, E4, F4, F#4, G4, G#4, A4, A#4, B4,
                         0,       2,   3,  4,  5,   6,  7,   8,  9,  10, 11,
-                     # C1, C#1  D1, D#1, E1, F1, F#1, G1, G#1, A1, A#1, B1,
+                     # C5, C#5, D5, D#5, E5, F5, F#5, G5, G#5, A5, A#5. B5,
                        12,  13, 14,  15, 16, 17,  18, 19,  20, 21,  22, 23,
-                     # C2, C#2, D2, D#2, E2, F2, F#2, G2, G#2, A2,
+                     # C6, C#6, D6, D#6, E6, F6, F#6, G6, G#6, A6,
                        24,  25, 26,  27, 28, 29,  30, 31,  32, 33 ],
       "program"  :  4,
       "height"   : 70.0,
