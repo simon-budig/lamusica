@@ -10,7 +10,7 @@ delta_ticks = 0
 
 models = {
    # https://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=4905
-   "sankyo15" : {
+   "china15" : {
       # Gis Dur? SRSLY?
       "lowest"   : 68,  # G#4 / g#'
       "notes"    : [
@@ -48,7 +48,7 @@ models = {
    # http://www.njdean.co.uk/musical-movements-mbm30hp.htm
    # http://www.mmdigest.com/Gallery/Sounds/mg_Teamola30n.html
    # https://www.spieluhr.de/Artikel/varAussehen.asp?ArtikelNr=5984
-   "teanola30" : {
+   "china30" : {
       "lowest"   : 53,  # F3 / f
       "notes"    : [
                      #                       F3, F#3, G3, G#3, A3, A#3, B3,
