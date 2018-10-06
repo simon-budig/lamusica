@@ -84,12 +84,13 @@ models = {
       "distance" :  1.8,
       "diameter" :  1.7,
       "step"     :  8.0,
+      "speed"    :  600./106,
    }
 }
 
 
 def output_file (model, filename, is_pdf, notelist, mindelta):
-   pwidth  = 700.0 - 20
+   pwidth  = 1200.0 - 20
    pheight = 500.0 - 20
    pborder = 10    - 8
    height  = model["height"]
@@ -97,8 +98,8 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
    radius  = model["diameter"] / 2
    dist    = model["distance"]
    step    = model["step"] / mindelta
-   leadin  = 20.0
-   leadout = 20.0
+   leadin  = 50.0
+   leadout = 50.0
 
    alltimes = list (set (sum (notelist, [])))
    alltimes.sort ()
@@ -331,6 +332,9 @@ class PianoRoll (object):
             mindelta = n.ticks - n0.ticks
          n0 = n
 
+      if mindelta == sys.maxsize:
+         mindelta = 1000
+
       return mindelta
 
 
@@ -487,7 +491,7 @@ class MidiImporter (object):
          self.import_event (ticks, track, command)
 
 
-   def import_chunk (self, chunkname, chunkdata):
+   def import_chunk (self, chunkname, chunkdata, ignoretracks):
       if self.timediv == 0 and chunkname != b'MThd':
          raise Exception ("first chunk is not MThd")
 
@@ -505,11 +509,12 @@ class MidiImporter (object):
          print ("type: %d, n_tracks: %d, delta_ticks: %d" % (mtype, n_tracks, delta_ticks), file=sys.stderr)
 
       elif chunkname == b'MTrk':
-         self.import_ticked_events (self.num_tracks, chunkdata)
+         if self.num_tracks not in ignoretracks:
+            self.import_ticked_events (self.num_tracks, chunkdata)
          self.num_tracks += 1
 
 
-   def import_file (self, filename):
+   def import_file (self, filename, ignoretracks):
       t = open (filename, "rb").read()
 
       while t:
@@ -523,8 +528,9 @@ class MidiImporter (object):
          chunkdata = t[8:8+chunklen]
 
          print (chunkname, chunklen, file=sys.stderr)
-         self.import_chunk (chunkname, chunkdata)
+         self.import_chunk (chunkname, chunkdata, ignoretracks)
          t = t[8+chunklen:]
+      print ("%d tracks" % self.num_tracks)
 
 
 
@@ -543,9 +549,9 @@ def usage ():
 if __name__=='__main__':
    try:
       opts, args = getopt.getopt (sys.argv[1:],
-                                  "ht:f:b:m:s:p:",
+                                  "ht:f:i:b:m:s:p:",
                                   ["help", "transpose=",
-                                  "filter=", "box=",
+                                  "filter=", "ignore=", "box=",
                                   "midi=", "svg=", "pdf="])
    except getopt.GetoptError as err:
       usage()
@@ -561,6 +567,7 @@ if __name__=='__main__':
    filter = 1
    boxtype = "sankyo20"
    transpose = None
+   ignoretracks = []
 
    for o, a in opts:
       if o in ("-h", "--help"):
@@ -578,6 +585,8 @@ if __name__=='__main__':
          svgfile = a
       elif o in ("-p", "--pdf"):
          pdffile = a
+      elif o in ("-i", "--ignore"):
+         ignoretracks = [ int (t) for t in a.split (",") ]
       else:
          assert False, "unhandled option"
 
@@ -591,7 +600,7 @@ if __name__=='__main__':
 
    roll = PianoRoll()
    mi = MidiImporter (roll)
-   mi.import_file (args[0])
+   mi.import_file (args[0], ignoretracks)
 
    print (roll.min_repetition ())
    roll.filter_repetition (filter)
