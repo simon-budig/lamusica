@@ -90,7 +90,7 @@ models = {
 
 
 def output_file (model, filename, is_pdf, notelist, mindelta):
-   pwidth  = 1200.0 - 20
+   pwidth  = 700.0 - 20
    pheight = 500.0 - 20
    pborder = 10    - 8
    height  = model["height"]
@@ -191,10 +191,15 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
       while holes and holes[0][0] < x1:
          x, y = holes.pop (0)
          cr.new_sub_path ()
-         cr.arc (x - x0 + pborder, y + y0, radius, 0.0*math.pi, 0.5*math.pi)
-         cr.arc (x - x0 + pborder, y + y0, radius, 0.5*math.pi, 1.0*math.pi)
+       # cr.arc (x - x0 + pborder, y + y0, radius, 0.0*math.pi, 0.5*math.pi)
+       # cr.arc (x - x0 + pborder, y + y0, radius, 0.5*math.pi, 1.0*math.pi)
+       # cr.arc (x - x0 + pborder, y + y0, radius, 1.0*math.pi, 1.5*math.pi)
+       # cr.arc (x - x0 + pborder, y + y0, radius, 1.5*math.pi, 2.0*math.pi)
          cr.arc (x - x0 + pborder, y + y0, radius, 1.0*math.pi, 1.5*math.pi)
-         cr.arc (x - x0 + pborder, y + y0, radius, 1.5*math.pi, 2.0*math.pi)
+         cr.line_to (x - x0 + pborder + radius, y + y0 - radius)
+         cr.line_to (x - x0 + pborder + radius, y + y0 + radius)
+         cr.line_to (x - x0 + pborder, y + y0 + radius)
+         cr.arc (x - x0 + pborder, y + y0, radius, 0.5*math.pi, 1.0*math.pi)
          cr.close_path ()
          if x - x0 + pborder - border_end >= 50:
             cr.move_to (border_end, y0)
@@ -324,16 +329,26 @@ class PianoRoll (object):
       self.notes.sort (key=lambda x: x.ticks)
       self.notes.sort (key=lambda x: x.note)
       mindelta = sys.maxsize
+      distances = {}
       n0 = self.notes[0]
-      for n in self.notes[1:]:
-         d = n.ticks - n0.ticks
-         # notes at the same tick are considered identical
-         if n.note == n0.note and d > 0 and d < mindelta:
-            mindelta = n.ticks - n0.ticks
-         n0 = n
+      for n1 in self.notes[1:]:
+         if n1.note == n0.note:
+            if n1.filtered:
+               continue
+            d = n1.ticks - n0.ticks
+            # notes at the same tick are considered identical
+            if d > 0:
+               distances[d] = distances.get (d, 0) + 1;
+               mindelta = min (mindelta, d)
+         n0 = n1
+
+      dists = list (distances.keys ())
+      dists.sort ()
+      for i in dists[:10]:
+         print (i, distances[i])
 
       if mindelta == sys.maxsize:
-         mindelta = 1000
+         mindelta = 480
 
       return mindelta
 
