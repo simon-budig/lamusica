@@ -89,17 +89,47 @@ models = {
 }
 
 
-def output_file (model, filename, is_pdf, notelist, mindelta):
-   pwidth  = 700.0 - 20
-   pheight = 500.0 - 20
-   pborder = 10    - 8
+def sort_coords (coords):
+   return coords
+
+   dists = {}
+   for a in range (len (coords)):
+      for b in range (a):
+         dists[(b, a)] = ((coords[a][0] - coords[b][0])**2 + (coords[a][1] - coords[b][1])**2)**0.5
+
+   # sortieren: ähnlich minimal tree, nur Verlängern an Ende
+   # 2nd pass: Punkte einzeln hinzufügen und nach Dreickesungleichung vorher suchen
+
+
+def output_file (model, filename, is_pdf, notelist, mindelta, papersize):
+   papersizes = {
+      "A4": (297, 210, 5, 5),
+      "A3": (420, 297, 5, 5),
+   }
+
+   if papersize in papersizes:
+      pwidth, pheight, p_x0, p_y0 = papersizes[papersize]
+      pgap = 2
+   else:
+      pwidth  = 700.0
+      pheight = 500.0
+      p_x0 = 10
+      p_y0 = 10
+      pgap = 2
+
+   p_x0 = max (p_x0, pgap)
+   p_y0 = max (p_y0, pgap)
+
+   strip_maxwidth  = pwidth  - 2 * p_x0
+   strip_maxheight = pheight - 2 * p_y0
+
    height  = model["height"]
    offset  = model["offset"]
    radius  = model["diameter"] / 2
    dist    = model["distance"]
    step    = model["step"] / mindelta
-   leadin  = 50.0
-   leadout = 50.0
+   leadin  = 30.0
+   leadout = 30.0
 
    alltimes = list (set (sum (notelist, [])))
    alltimes.sort ()
@@ -113,7 +143,7 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
 
    for i in range (1, len(alltimes)):
       middlepos = leadin + (alltimes[i] + alltimes[i-1]) * step / 2
-      if middlepos - startpos > pwidth - 2 * pborder:
+      if middlepos - startpos > strip_maxwidth:
          splits.append (breakpos)
          startpos = breakpos
 
@@ -132,7 +162,7 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
                                   pheight / 25.4 * 72)
    else:
       # cairo svg cannot deal with multiple pages
-      pheight = len (splits) * (height + pborder) - height + 1
+      pheight = len (splits) * (height + pgap) - pgap + 2 * p_y0
       surface = cairo.SVGSurface (filename,
                                   pwidth / 25.4 * 72,
                                   pheight / 25.4 * 72)
@@ -143,6 +173,8 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
    cr.translate (0.0, -pheight)
    cr.set_line_width (0.2)
 
+   cr.save ()
+   cr.translate (p_x0, p_y0)
    cr.move_to (4, 5)
    cr.line_to (7, 7)
    cr.line_to (7, 5.7)
@@ -152,8 +184,9 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
    cr.line_to (7, 3)
    cr.close_path ()
    cr.fill ()
+   cr.restore ()
 
-   y0 = pborder
+   y0 = max (p_y0, pgap)
    y1 = y0 + height
 
    x0 = splits.pop (0)
@@ -162,10 +195,10 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
       cr.set_source_rgb (0, 0, 1)
       cr.set_line_width (0.4)
       # cr.rectangle (pborder, y0, x1 - x0, y1 - y0)
-      cr.move_to (pborder, y0)
-      cr.line_to (pborder, y1)
-      cr.move_to (pborder + x1 - x0, y0)
-      cr.line_to (pborder + x1 - x0, y1)
+      cr.move_to (p_x0, y0)
+      cr.line_to (p_x0, y1)
+      cr.move_to (p_x0 + x1 - x0, y0)
+      cr.line_to (p_x0 + x1 - x0, y1)
       cr.stroke ()
 
       if 0:
@@ -187,42 +220,57 @@ def output_file (model, filename, is_pdf, notelist, mindelta):
 
       cr.set_dash ([], 0)
       cr.set_line_width (0.4)
-      border_end = pborder;
+      border_end = p_x0;
+      order = []
       while holes and holes[0][0] < x1:
          x, y = holes.pop (0)
+         order.append ((x, y))
          cr.new_sub_path ()
        # cr.arc (x - x0 + pborder, y + y0, radius, 0.0*math.pi, 0.5*math.pi)
        # cr.arc (x - x0 + pborder, y + y0, radius, 0.5*math.pi, 1.0*math.pi)
        # cr.arc (x - x0 + pborder, y + y0, radius, 1.0*math.pi, 1.5*math.pi)
        # cr.arc (x - x0 + pborder, y + y0, radius, 1.5*math.pi, 2.0*math.pi)
-         cr.arc (x - x0 + pborder, y + y0, radius, 1.0*math.pi, 1.5*math.pi)
-         cr.line_to (x - x0 + pborder + radius, y + y0 - radius)
-         cr.line_to (x - x0 + pborder + radius, y + y0 + radius)
-         cr.line_to (x - x0 + pborder, y + y0 + radius)
-         cr.arc (x - x0 + pborder, y + y0, radius, 0.5*math.pi, 1.0*math.pi)
-         cr.close_path ()
-         if x - x0 + pborder - border_end >= 50:
+       ##cr.arc (x - x0 + pborder, y + y0, radius, 1.0*math.pi, 1.5*math.pi)
+       ##cr.line_to (x - x0 + pborder + radius, y + y0 - radius)
+       ##cr.line_to (x - x0 + pborder + radius, y + y0 + radius)
+       ##cr.line_to (x - x0 + pborder, y + y0 + radius)
+       ##cr.arc (x - x0 + pborder, y + y0, radius, 0.5*math.pi, 1.0*math.pi)
+       ##cr.close_path ()
+         cr.move_to (x - x0 + p_x0 - radius, y + y0)
+         cr.line_to (x - x0 + p_x0 + radius, y + y0)
+         cr.move_to (x - x0 + p_x0, y + y0 - radius)
+         cr.line_to (x - x0 + p_x0, y + y0 + radius)
+
+         if x - x0 + p_x0 - border_end >= 50:
             cr.move_to (border_end, y0)
-            cr.line_to (x - x0 + pborder, y0)
+            cr.line_to (x - x0 + p_x0, y0)
             cr.move_to (border_end, y1)
-            cr.line_to (x - x0 + pborder, y1)
+            cr.line_to (x - x0 + p_x0, y1)
             cr.new_sub_path ()
-            border_end = x - x0 + pborder
+            border_end = x - x0 + p_x0
+
+      if 0 and order:
+         order = sort_coords (order)
+         x, y = order.pop (0)
+         cr.move_to (x - x0 + pborder, y + y0)
+         while order:
+            x, y = order.pop (0)
+            cr.line_to (x - x0 + pborder, y + y0)
 
       if border_end < x1:
          cr.move_to (border_end, y0)
-         cr.line_to (x1 - x0 + pborder, y0)
+         cr.line_to (x1 - x0 + p_x0, y0)
          cr.move_to (border_end, y1)
-         cr.line_to (x1 - x0 + pborder, y1)
+         cr.line_to (x1 - x0 + p_x0, y1)
          cr.new_sub_path ()
 
-      cr.set_source_rgb (1, 0, 0)
+      cr.set_source_rgb (0, 0, 0)
       cr.stroke ()
 
       x0 = x1
-      y0 = y1 + pborder
-      if y0 + height + pborder > pheight:
-         y0 = pborder
+      y0 = y1 + pgap
+      if y0 + height + p_y0 > pheight:
+         y0 = p_y0
          cr.show_page ()
       y1 = y0 + height
 
@@ -446,6 +494,12 @@ class MidiImporter (object):
       elif mc == 0x0e:
          # print >>sys.stderr, ticks, ": pitch bend"
          pass
+      elif eventdata[:2] == b"\xff\x51" and len (eventdata) == 6:
+         uSq = (eventdata[3] << 16) + (eventdata[4] << 8) + eventdata[5]
+         bpm = 60 * 1000000 / uSq
+         print ("Tempo: %.2f (%d uS/q)" % (bpm, uSq))
+      elif eventdata[:2] == b"\xff\x58" and len (eventdata) == 7:
+         print ("Time Signature: %d/%d" % (eventdata[3], 2**eventdata[4]))
       else:
          print ("ticks: %d, event %r" % (ticks, eventdata), file=sys.stderr)
          pass
@@ -529,7 +583,7 @@ class MidiImporter (object):
          self.num_tracks += 1
 
 
-   def import_file (self, filename, ignoretracks):
+   def import_file (self, filename, ignoretracks=[]):
       t = open (filename, "rb").read()
 
       while t:
@@ -554,7 +608,7 @@ def usage ():
    print ("  -h, --help: show usage", file=sys.stderr)
    print ("  -t, --transpose=number: transpose by n halftones (avoid auto)", file=sys.stderr)
    print ("  -f, --filter=number: ignore note-repetition faster than <ticks>", file=sys.stderr)
-   print ("  -b, --box=type: music box type: sankyo15, sankyo20, teanola30, sankyo33", file=sys.stderr)
+   print ("  -b, --box=type: music box type: china15, sankyo20, china30, sankyo33", file=sys.stderr)
    print ("  -m, --midi=filename: output midi file name (omit if not wanted)", file=sys.stderr)
    print ("  -p, --pdf=filename: output pdf file name (omit if not wanted)", file=sys.stderr)
    print ("  -s, --svg=filename: output svg file name (omit if not wanted)", file=sys.stderr)
@@ -564,10 +618,10 @@ def usage ():
 if __name__=='__main__':
    try:
       opts, args = getopt.getopt (sys.argv[1:],
-                                  "ht:f:i:b:m:s:p:",
+                                  "ht:f:i:b:m:s:p:P:",
                                   ["help", "transpose=",
                                   "filter=", "ignore=", "box=",
-                                  "midi=", "svg=", "pdf="])
+                                  "midi=", "svg=", "pdf=", "paper="])
    except getopt.GetoptError as err:
       usage()
       sys.exit (2)
@@ -579,6 +633,7 @@ if __name__=='__main__':
    midifile = None
    svgfile = None
    pdffile = None
+   papersize = "A4"
    filter = 1
    boxtype = "sankyo20"
    transpose = None
@@ -600,6 +655,8 @@ if __name__=='__main__':
          svgfile = a
       elif o in ("-p", "--pdf"):
          pdffile = a
+      elif o in ("-P", "--paper"):
+         papersize = a
       elif o in ("-i", "--ignore"):
          ignoretracks = [ int (t) for t in a.split (",") ]
       else:
@@ -632,6 +689,6 @@ if __name__=='__main__':
       output_midi (model, midifile, notelist, mindelta)
 
    if pdffile:
-      output_file (model, pdffile, True, notelist, mindelta)
+      output_file (model, pdffile, True, notelist, mindelta, papersize)
    if svgfile:
-      output_file (model, svgfile, False, notelist, mindelta)
+      output_file (model, svgfile, False, notelist, mindelta, papersize)
