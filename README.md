@@ -1,3 +1,10 @@
+# This repository has moved!
+
+> [!CAUTION]
+> Due to the AInshittification of github I've moved the repository to codeberg,
+> see https://codeberg.org/nomis/lamusica. I won't do further
+> development here on github.
+
 # Lamusica...
 
 I've dabbled with music boxes for all of my life. My father had a paper-strip
